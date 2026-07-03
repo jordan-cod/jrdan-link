@@ -1,0 +1,10 @@
+.git
+.gitignore
+.env
+tmp/
+bin/
+*.log
+docker/grafana/
+migrations/
+queries/
+README.md
