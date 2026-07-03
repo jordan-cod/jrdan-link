@@ -12,7 +12,7 @@ export const linkSchema = z
   .openapi('Link');
 
 export const createLinkSchema = z.object({
-  url: z.string().openapi({ description: 'URL destino', example: 'https://github.com' }),
+  url: z.url({ protocol: /^https?$/ }).openapi({ description: 'URL destino (http/https)', example: 'https://github.com' }),
   slug: z
     .string()
     .regex(/^[a-zA-Z0-9_-]{3,32}$/)
@@ -22,7 +22,7 @@ export const createLinkSchema = z.object({
 });
 
 export const updateLinkSchema = z.object({
-  url: z.string().optional().openapi({ description: 'Novo destino' }),
+  url: z.url({ protocol: /^https?$/ }).optional().openapi({ description: 'Novo destino (http/https)' }),
   expires_at: z.coerce.date().optional().openapi({ description: 'Nova expiração' }),
   active: z.boolean().optional().openapi({ description: 'Ativar/desativar' }),
 });

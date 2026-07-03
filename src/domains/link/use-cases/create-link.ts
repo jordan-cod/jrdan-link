@@ -1,11 +1,9 @@
-import type { Link } from '@/domains/link/link.entity';
-import { InvalidSlugError, SlugTakenError } from '@/domains/link/link.errors';
 import { linkRepository } from '@/container';
-import { validateUrl } from '@/domains/link/link.validation';
+import type { Link } from '@/domains/link/link.entity';
+import { SlugTakenError } from '@/domains/link/link.errors';
 import { isUniqueViolation } from '@/shared/postgres-errors';
 import { newShortId } from '@/shared/short-id';
 
-const SLUG_PATTERN = /^[a-zA-Z0-9_-]{3,32}$/;
 const ID_LENGTH = 8;
 const MAX_ID_ATTEMPTS = 3;
 
@@ -16,10 +14,7 @@ export interface CreateLinkInput {
 }
 
 export async function createLink(input: CreateLinkInput): Promise<Link> {
-  validateUrl(input.url);
-
   if (input.slug) {
-    if (!SLUG_PATTERN.test(input.slug)) throw new InvalidSlugError();
     try {
       return await linkRepository.insert({ id: input.slug, url: input.url, expiresAt: input.expiresAt });
     } catch (err) {
@@ -37,4 +32,3 @@ export async function createLink(input: CreateLinkInput): Promise<Link> {
   }
   throw new Error('could not generate unique short id');
 }
-

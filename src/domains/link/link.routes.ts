@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
 import { config } from '@/config';
 import type { Link } from '@/domains/link/link.entity';
 import { recordClick } from '@/domains/click/use-cases/record-click';
-import { InvalidSlugError, InvalidUrlError, NotFoundError, SlugTakenError } from '@/domains/link/link.errors';
+import { NotFoundError, SlugTakenError } from '@/domains/link/link.errors';
 import { createLinkSchema, errorSchema, linkSchema, updateLinkSchema } from '@/domains/link/link.schema';
 import { createLink } from '@/domains/link/use-cases/create-link';
 import { deactivateLink } from '@/domains/link/use-cases/deactivate-link';
@@ -50,7 +50,6 @@ const createLinkRoute = createRoute({
   request: { body: { content: { 'application/json': { schema: createLinkSchema } } } },
   responses: {
     201: { content: { 'application/json': { schema: linkSchema } }, description: 'Link criado' },
-    400: { content: { 'application/json': { schema: errorSchema } }, description: 'URL ou slug inválido' },
     409: { content: { 'application/json': { schema: errorSchema } }, description: 'Slug já existe' },
   },
 });
@@ -95,7 +94,6 @@ const updateLinkRoute = createRoute({
   },
   responses: {
     200: { content: { 'application/json': { schema: linkSchema } }, description: 'Link atualizado' },
-    400: { content: { 'application/json': { schema: errorSchema } }, description: 'URL inválida' },
     404: { content: { 'application/json': { schema: errorSchema } }, description: 'Link não existe' },
   },
 });
@@ -139,8 +137,6 @@ export function registerLinkRoutes(app: OpenAPIHono) {
       const link = await createLink({ url: body.url, slug: body.slug, expiresAt: body.expires_at });
       return c.json(toLinkBody(link), 201);
     } catch (err) {
-      if (err instanceof InvalidUrlError) return c.json({ error: 'url must be a valid http(s) URL' }, 400);
-      if (err instanceof InvalidSlugError) return c.json({ error: 'slug must match ^[a-zA-Z0-9_-]{3,32}$' }, 400);
       if (err instanceof SlugTakenError) return c.json({ error: 'slug already taken' }, 409);
       throw err;
     }
@@ -160,7 +156,6 @@ export function registerLinkRoutes(app: OpenAPIHono) {
       return c.json(toLinkBody(link), 200);
     } catch (err) {
       if (err instanceof NotFoundError) return c.json({ error: 'link not found' }, 404);
-      if (err instanceof InvalidUrlError) return c.json({ error: 'url must be a valid http(s) URL' }, 400);
       throw err;
     }
   });
