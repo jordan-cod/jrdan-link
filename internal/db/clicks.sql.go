@@ -14,7 +14,7 @@ import (
 const getLinkDailyClicks = `-- name: GetLinkDailyClicks :many
 SELECT date_trunc('day', ts)::date AS day, count(*) AS clicks
 FROM clicks
-WHERE link_id = $1 AND ts > now() - interval '30 days'
+WHERE link_id = $1 AND NOT is_bot AND ts > now() - interval '30 days'
 GROUP BY day
 ORDER BY day DESC
 `
@@ -44,10 +44,43 @@ func (q *Queries) GetLinkDailyClicks(ctx context.Context, linkID string) ([]GetL
 	return items, nil
 }
 
+const getLinkDevices = `-- name: GetLinkDevices :many
+SELECT coalesce(device, 'unknown') AS device, count(*) AS clicks
+FROM clicks
+WHERE link_id = $1 AND NOT is_bot
+GROUP BY device
+ORDER BY clicks DESC
+`
+
+type GetLinkDevicesRow struct {
+	Device string `json:"device"`
+	Clicks int64  `json:"clicks"`
+}
+
+func (q *Queries) GetLinkDevices(ctx context.Context, linkID string) ([]GetLinkDevicesRow, error) {
+	rows, err := q.db.Query(ctx, getLinkDevices, linkID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLinkDevicesRow
+	for rows.Next() {
+		var i GetLinkDevicesRow
+		if err := rows.Scan(&i.Device, &i.Clicks); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getLinkTopReferrers = `-- name: GetLinkTopReferrers :many
 SELECT coalesce(referrer, '(direct)') AS referrer, count(*) AS clicks
 FROM clicks
-WHERE link_id = $1
+WHERE link_id = $1 AND NOT is_bot
 GROUP BY referrer
 ORDER BY clicks DESC
 LIMIT 10
@@ -80,11 +113,11 @@ func (q *Queries) GetLinkTopReferrers(ctx context.Context, linkID string) ([]Get
 
 const getLinkTotals = `-- name: GetLinkTotals :one
 SELECT
-    count(*)                                            AS total_clicks,
-    count(*) FILTER (WHERE ts > now() - interval '24 hours') AS clicks_24h,
-    count(*) FILTER (WHERE ts > now() - interval '7 days')   AS clicks_7d
+    count(*)                                                  AS total_clicks,
+    count(*) FILTER (WHERE ts > now() - interval '24 hours')  AS clicks_24h,
+    count(*) FILTER (WHERE ts > now() - interval '7 days')    AS clicks_7d
 FROM clicks
-WHERE link_id = $1
+WHERE link_id = $1 AND NOT is_bot
 `
 
 type GetLinkTotalsRow struct {

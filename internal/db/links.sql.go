@@ -61,3 +61,86 @@ func (q *Queries) GetLink(ctx context.Context, id string) (Link, error) {
 	)
 	return i, err
 }
+
+const listLinks = `-- name: ListLinks :many
+SELECT l.id, l.url, l.created_at, l.expires_at, l.active,
+       (SELECT count(*) FROM clicks c WHERE c.link_id = l.id AND NOT c.is_bot) AS total_clicks
+FROM links l
+ORDER BY l.created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListLinksParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListLinksRow struct {
+	ID          string             `json:"id"`
+	Url         string             `json:"url"`
+	CreatedAt   pgtype.Timestamptz `json:"created_at"`
+	ExpiresAt   pgtype.Timestamptz `json:"expires_at"`
+	Active      bool               `json:"active"`
+	TotalClicks int64              `json:"total_clicks"`
+}
+
+func (q *Queries) ListLinks(ctx context.Context, arg ListLinksParams) ([]ListLinksRow, error) {
+	rows, err := q.db.Query(ctx, listLinks, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListLinksRow
+	for rows.Next() {
+		var i ListLinksRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Url,
+			&i.CreatedAt,
+			&i.ExpiresAt,
+			&i.Active,
+			&i.TotalClicks,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const updateLink = `-- name: UpdateLink :one
+UPDATE links SET
+    url        = coalesce($1, url),
+    expires_at = coalesce($2, expires_at),
+    active     = coalesce($3, active)
+WHERE id = $4
+RETURNING id, url, created_at, expires_at, active
+`
+
+type UpdateLinkParams struct {
+	Url       pgtype.Text        `json:"url"`
+	ExpiresAt pgtype.Timestamptz `json:"expires_at"`
+	Active    pgtype.Bool        `json:"active"`
+	ID        string             `json:"id"`
+}
+
+func (q *Queries) UpdateLink(ctx context.Context, arg UpdateLinkParams) (Link, error) {
+	row := q.db.QueryRow(ctx, updateLink,
+		arg.Url,
+		arg.ExpiresAt,
+		arg.Active,
+		arg.ID,
+	)
+	var i Link
+	err := row.Scan(
+		&i.ID,
+		&i.Url,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+		&i.Active,
+	)
+	return i, err
+}

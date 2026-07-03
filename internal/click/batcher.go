@@ -15,6 +15,8 @@ type Event struct {
 	TS        time.Time
 	UserAgent string
 	Referrer  string
+	Device    string
+	IsBot     bool
 }
 
 // Batcher acumula clicks num channel e grava em lote via COPY,
@@ -92,12 +94,12 @@ func (b *Batcher) flush(batch []Event) {
 
 	rows := make([][]any, len(batch))
 	for i, e := range batch {
-		rows[i] = []any{e.LinkID, e.TS, nullable(e.UserAgent), nullable(e.Referrer)}
+		rows[i] = []any{e.LinkID, e.TS, nullable(e.UserAgent), nullable(e.Referrer), nullable(e.Device), e.IsBot}
 	}
 
 	_, err := b.pool.CopyFrom(ctx,
 		pgx.Identifier{"clicks"},
-		[]string{"link_id", "ts", "user_agent", "referrer"},
+		[]string{"link_id", "ts", "user_agent", "referrer", "device", "is_bot"},
 		pgx.CopyFromRows(rows),
 	)
 	if err != nil {

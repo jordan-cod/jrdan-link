@@ -18,6 +18,8 @@ type Click struct {
 	UserAgent pgtype.Text        `json:"user_agent"`
 	Referrer  pgtype.Text        `json:"referrer"`
 	Country   pgtype.Text        `json:"country"`
+	Device    pgtype.Text        `json:"device"`
+	IsBot     bool               `json:"is_bot"`
 }
 
 type ClicksDaily struct {
