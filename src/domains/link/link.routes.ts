@@ -3,20 +3,14 @@ import QRCode from 'qrcode';
 
 import { config } from '@/config';
 import type { LinkRow } from '@/db';
-import { batcher } from '@/domains/click/click.batcher';
-import { classify } from '@/domains/click/click.classify';
-import {
-  create,
-  deactivate,
-  InvalidSlugError,
-  InvalidUrlError,
-  list,
-  NotFoundError,
-  resolve,
-  SlugTakenError,
-  update,
-} from '@/domains/link/link.service';
+import { recordClick } from '@/domains/click/use-cases/record-click';
+import { InvalidSlugError, InvalidUrlError, NotFoundError, SlugTakenError } from '@/domains/link/link.errors';
 import { createLinkSchema, errorSchema, linkSchema, updateLinkSchema } from '@/domains/link/link.schema';
+import { createLink } from '@/domains/link/use-cases/create-link';
+import { deactivateLink } from '@/domains/link/use-cases/deactivate-link';
+import { listLinks } from '@/domains/link/use-cases/list-links';
+import { resolveLink } from '@/domains/link/use-cases/resolve-link';
+import { updateLink } from '@/domains/link/use-cases/update-link';
 import { apiKeyAuth } from '@/http/auth';
 
 function toLinkBody(link: LinkRow) {
@@ -142,7 +136,7 @@ export function registerLinkRoutes(app: OpenAPIHono) {
   app.openapi(createLinkRoute, async (c) => {
     const body = c.req.valid('json');
     try {
-      const link = await create(body.url, body.slug, body.expires_at);
+      const link = await createLink({ url: body.url, slug: body.slug, expiresAt: body.expires_at });
       return c.json(toLinkBody(link), 201);
     } catch (err) {
       if (err instanceof InvalidUrlError) return c.json({ error: 'url must be a valid http(s) URL' }, 400);
@@ -154,7 +148,7 @@ export function registerLinkRoutes(app: OpenAPIHono) {
 
   app.openapi(listLinksRoute, async (c) => {
     const { limit, offset } = c.req.valid('query');
-    const rows = await list(limit, offset);
+    const rows = await listLinks({ limit, offset });
     return c.json({ links: rows.map(toLinkBody) }, 200);
   });
 
@@ -162,7 +156,7 @@ export function registerLinkRoutes(app: OpenAPIHono) {
     const { id } = c.req.valid('param');
     const body = c.req.valid('json');
     try {
-      const link = await update(id, { url: body.url, expiresAt: body.expires_at, active: body.active });
+      const link = await updateLink(id, { url: body.url, expiresAt: body.expires_at, active: body.active });
       return c.json(toLinkBody(link), 200);
     } catch (err) {
       if (err instanceof NotFoundError) return c.json({ error: 'link not found' }, 404);
@@ -173,7 +167,7 @@ export function registerLinkRoutes(app: OpenAPIHono) {
 
   app.openapi(deleteLinkRoute, async (c) => {
     const { id } = c.req.valid('param');
-    await deactivate(id);
+    await deactivateLink(id);
     return c.body(null, 204);
   });
 
@@ -181,7 +175,7 @@ export function registerLinkRoutes(app: OpenAPIHono) {
     const { id } = c.req.valid('param');
     const { size } = c.req.valid('query');
     try {
-      await resolve(id);
+      await resolveLink(id);
     } catch (err) {
       if (err instanceof NotFoundError) return c.json({ error: 'link not found' }, 404);
       throw err;
@@ -195,21 +189,16 @@ export function registerLinkRoutes(app: OpenAPIHono) {
     const { id } = c.req.valid('param');
     let link: LinkRow;
     try {
-      link = await resolve(id);
+      link = await resolveLink(id);
     } catch (err) {
       if (err instanceof NotFoundError) return c.json({ error: 'link not found' }, 404);
       throw err;
     }
 
-    const ua = c.req.header('user-agent') ?? '';
-    const { device, isBot } = classify(ua);
-    batcher.record({
+    recordClick({
       linkId: link.id,
-      ts: new Date(),
-      userAgent: ua || null,
+      userAgent: c.req.header('user-agent') ?? null,
       referrer: c.req.header('referer') ?? null,
-      device,
-      isBot,
     });
 
     let dest = link.url;
