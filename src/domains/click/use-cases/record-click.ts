@@ -1,4 +1,4 @@
-import { batcher } from '@/domains/click/click.batcher';
+import { clickBatcher } from '@/container';
 import { classify } from '@/domains/click/click.classify';
 
 export interface RecordClickInput {
@@ -9,7 +9,7 @@ export interface RecordClickInput {
 
 export function recordClick(input: RecordClickInput): void {
   const { device, isBot } = classify(input.userAgent ?? '');
-  batcher.record({
+  clickBatcher.record({
     linkId: input.linkId,
     ts: new Date(),
     userAgent: input.userAgent,

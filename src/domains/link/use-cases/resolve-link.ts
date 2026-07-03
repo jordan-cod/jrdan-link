@@ -1,9 +1,9 @@
-import type { LinkRow } from '@/db';
+import type { Link } from '@/domains/link/link.entity';
 import { linkCache } from '@/domains/link/link.cache';
 import { NotFoundError } from '@/domains/link/link.errors';
-import { linkRepository } from '@/domains/link/link.repository';
+import { linkRepository } from '@/container';
 
-export async function resolveLink(id: string): Promise<LinkRow> {
+export async function resolveLink(id: string): Promise<Link> {
   let link = linkCache.get(id);
   if (!link) {
     link = await linkRepository.findActiveById(id);

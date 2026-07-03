@@ -1,6 +1,6 @@
-import type { LinkRow } from '@/db';
+import type { Link } from '@/domains/link/link.entity';
 import { InvalidSlugError, SlugTakenError } from '@/domains/link/link.errors';
-import { linkRepository } from '@/domains/link/link.repository';
+import { linkRepository } from '@/container';
 import { validateUrl } from '@/domains/link/link.validation';
 import { isUniqueViolation } from '@/shared/postgres-errors';
 import { newShortId } from '@/shared/short-id';
@@ -15,7 +15,7 @@ export interface CreateLinkInput {
   expiresAt?: Date;
 }
 
-export async function createLink(input: CreateLinkInput): Promise<LinkRow> {
+export async function createLink(input: CreateLinkInput): Promise<Link> {
   validateUrl(input.url);
 
   if (input.slug) {

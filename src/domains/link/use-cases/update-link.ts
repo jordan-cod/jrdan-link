@@ -1,7 +1,8 @@
-import type { LinkRow } from '@/db';
+import type { Link } from '@/domains/link/link.entity';
 import { linkCache } from '@/domains/link/link.cache';
 import { NotFoundError } from '@/domains/link/link.errors';
-import { linkRepository, type LinkPatch } from '@/domains/link/link.repository';
+import { linkRepository } from '@/container';
+import type { LinkPatch } from '@/domains/link/link.entity';
 import { validateUrl } from '@/domains/link/link.validation';
 
 export interface UpdateLinkInput {
@@ -10,7 +11,7 @@ export interface UpdateLinkInput {
   active?: boolean;
 }
 
-export async function updateLink(id: string, input: UpdateLinkInput): Promise<LinkRow> {
+export async function updateLink(id: string, input: UpdateLinkInput): Promise<Link> {
   const patch: LinkPatch = {};
   if (input.url !== undefined) {
     validateUrl(input.url);

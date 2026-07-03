@@ -1,8 +1,6 @@
-import { db } from '@/db';
-import { clicks } from '@/db/schema';
+import type { NewClick } from '@/domains/click/click.entity';
+import type { ClickRepository } from '@/domains/click/click.repository';
 import { logger } from '@/logger';
-
-export type ClickEvent = typeof clicks.$inferInsert;
 
 const MAX_BUFFER = 10_000;
 const MAX_BATCH = 1_000;
@@ -10,15 +8,17 @@ const FLUSH_INTERVAL_MS = 500;
 
 // Acumula clicks em memória e grava em lote, mantendo o write
 // fora do hot path do redirect.
-class Batcher {
-  private buffer: ClickEvent[] = [];
+export class Batcher {
+  private buffer: NewClick[] = [];
   private timer: Timer | null = null;
+
+  constructor(private readonly repository: ClickRepository) {}
 
   start() {
     this.timer = setInterval(() => void this.flush(), FLUSH_INTERVAL_MS);
   }
 
-  record(event: ClickEvent) {
+  record(event: NewClick) {
     if (this.buffer.length >= MAX_BUFFER) {
       logger.warn({ linkId: event.linkId }, 'click dropped: buffer full');
       return;
@@ -32,7 +32,7 @@ class Batcher {
     const batch = this.buffer;
     this.buffer = [];
     try {
-      await db.insert(clicks).values(batch);
+      await this.repository.insertMany(batch);
     } catch (err) {
       logger.error({ err, count: batch.length }, 'flush clicks failed');
     }
@@ -43,5 +43,3 @@ class Batcher {
     await this.flush();
   }
 }
-
-export const batcher = new Batcher();

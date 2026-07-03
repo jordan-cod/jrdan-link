@@ -2,7 +2,7 @@ import { createRoute, z, type OpenAPIHono } from '@hono/zod-openapi';
 import QRCode from 'qrcode';
 
 import { config } from '@/config';
-import type { LinkRow } from '@/db';
+import type { Link } from '@/domains/link/link.entity';
 import { recordClick } from '@/domains/click/use-cases/record-click';
 import { InvalidSlugError, InvalidUrlError, NotFoundError, SlugTakenError } from '@/domains/link/link.errors';
 import { createLinkSchema, errorSchema, linkSchema, updateLinkSchema } from '@/domains/link/link.schema';
@@ -13,7 +13,7 @@ import { resolveLink } from '@/domains/link/use-cases/resolve-link';
 import { updateLink } from '@/domains/link/use-cases/update-link';
 import { apiKeyAuth } from '@/http/auth';
 
-function toLinkBody(link: LinkRow) {
+function toLinkBody(link: Link) {
   return {
     id: link.id,
     url: link.url,
@@ -187,7 +187,7 @@ export function registerLinkRoutes(app: OpenAPIHono) {
   // Registrada por último: /{id} é catch-all e não pode engolir /links.
   app.openapi(redirectRoute, async (c) => {
     const { id } = c.req.valid('param');
-    let link: LinkRow;
+    let link: Link;
     try {
       link = await resolveLink(id);
     } catch (err) {
