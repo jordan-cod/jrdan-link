@@ -1,5 +1,4 @@
 import type { Link } from '@/domains/link/link.entity';
-import { linkCache } from '@/domains/link/link.cache';
 import { NotFoundError } from '@/domains/link/link.errors';
 import { linkRepository } from '@/container';
 import type { LinkPatch } from '@/domains/link/link.entity';
@@ -29,7 +28,6 @@ export async function updateLink(id: string, input: UpdateLinkInput): Promise<Li
   const link = await linkRepository.update(id, patch);
   if (!link) throw new NotFoundError();
 
-  linkCache.invalidate(id);
   return link;
 }
 
