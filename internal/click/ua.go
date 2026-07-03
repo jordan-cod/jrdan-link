@@ -5,6 +5,8 @@ import (
 )
 
 // Classify extrai o tipo de dispositivo do User-Agent e detecta bots.
+// Segue a convenção dos grandes (Dub, Plausible): só marca bot quando
+// positivamente identificado; UA desconhecido conta como humano.
 func Classify(raw string) (device string, isBot bool) {
 	if raw == "" {
 		return "unknown", true
@@ -23,6 +25,6 @@ func Classify(raw string) (device string, isBot bool) {
 	case parsed.Desktop:
 		return "desktop", false
 	default:
-		return "unknown", true
+		return "unknown", false
 	}
 }
