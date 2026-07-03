@@ -13,6 +13,7 @@ import (
 	"github.com/jrdan/tracker/internal/db"
 )
 
+// Handler expõe as rotas HTTP do domínio de links.
 type Handler struct {
 	svc     *Service
 	clicks  *click.Batcher
@@ -25,6 +26,7 @@ func NewHandler(svc *Service, clicks *click.Batcher, q *db.Queries, baseURL stri
 	return &Handler{svc: svc, clicks: clicks, q: q, baseURL: baseURL, log: log}
 }
 
+// Register registra as operações do domínio no huma.API.
 func (h *Handler) Register(api huma.API) {
 	huma.Register(api, huma.Operation{
 		OperationID: "redirect",

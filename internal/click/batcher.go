@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// Event é um click a ser persistido.
 type Event struct {
 	LinkID    string
 	TS        time.Time
@@ -16,6 +17,8 @@ type Event struct {
 	Referrer  string
 }
 
+// Batcher acumula clicks num channel e grava em lote via COPY,
+// mantendo o write fora do hot path do redirect.
 type Batcher struct {
 	pool      *pgxpool.Pool
 	log       *slog.Logger
@@ -36,6 +39,7 @@ func NewBatcher(pool *pgxpool.Pool, log *slog.Logger) *Batcher {
 	}
 }
 
+// Record enfileira sem bloquear; com o buffer cheio o evento é descartado.
 func (b *Batcher) Record(e Event) {
 	select {
 	case b.ch <- e:
@@ -44,6 +48,7 @@ func (b *Batcher) Record(e Event) {
 	}
 }
 
+// Run consome o channel até ele ser fechado, drenando o restante ao sair.
 func (b *Batcher) Run() {
 	defer close(b.done)
 
@@ -72,6 +77,7 @@ func (b *Batcher) Run() {
 	}
 }
 
+// Close para de aceitar eventos e espera o drain terminar.
 func (b *Batcher) Close() {
 	close(b.ch)
 	<-b.done

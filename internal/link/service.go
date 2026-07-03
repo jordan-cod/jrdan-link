@@ -19,6 +19,7 @@ var (
 	ErrInvalidURL = errors.New("invalid url")
 )
 
+// Service resolve e cria links, com cache LRU em memória no read path.
 type Service struct {
 	q     *db.Queries
 	cache *expirable.LRU[string, db.Link]
@@ -31,6 +32,7 @@ func NewService(q *db.Queries) *Service {
 	}
 }
 
+// Resolve retorna o link ativo e não expirado, ou ErrNotFound.
 func (s *Service) Resolve(ctx context.Context, id string) (db.Link, error) {
 	link, ok := s.cache.Get(id)
 	if !ok {
@@ -51,6 +53,7 @@ func (s *Service) Resolve(ctx context.Context, id string) (db.Link, error) {
 	return link, nil
 }
 
+// Create valida a URL e persiste um novo link com short ID aleatório.
 func (s *Service) Create(ctx context.Context, rawURL string, expiresAt *time.Time) (db.Link, error) {
 	if err := validateURL(rawURL); err != nil {
 		return db.Link{}, err

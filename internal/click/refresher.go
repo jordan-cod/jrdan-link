@@ -8,6 +8,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// RunRefresher mantém a materialized view clicks_daily atualizada
+// sem bloquear leituras (REFRESH CONCURRENTLY).
 func RunRefresher(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger, every time.Duration) {
 	ticker := time.NewTicker(every)
 	defer ticker.Stop()
