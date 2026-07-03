@@ -25,8 +25,8 @@ function toLinkBody(link: LinkRow) {
     url: link.url,
     short_url: `${config.BASE_URL}/${link.id}`,
     active: link.active,
-    created_at: link.created_at.toISOString(),
-    expires_at: link.expires_at?.toISOString() ?? null,
+    created_at: link.createdAt.toISOString(),
+    expires_at: link.expiresAt?.toISOString() ?? null,
   };
 }
 
@@ -204,12 +204,12 @@ export function registerLinkRoutes(app: OpenAPIHono) {
     const ua = c.req.header('user-agent') ?? '';
     const { device, isBot } = classify(ua);
     batcher.record({
-      link_id: link.id,
+      linkId: link.id,
       ts: new Date(),
-      user_agent: ua || null,
+      userAgent: ua || null,
       referrer: c.req.header('referer') ?? null,
       device,
-      is_bot: isBot,
+      isBot,
     });
 
     let dest = link.url;

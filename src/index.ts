@@ -1,9 +1,10 @@
 import { config } from '@/config';
-import { sql } from '@/db';
+import { client } from '@/db';
 import { batcher } from '@/domains/click/click.batcher';
 import { buildApp } from '@/http/app';
+import { logger } from '@/logger';
 
-await sql`SELECT 1`;
+await client`SELECT 1`;
 
 batcher.start();
 
@@ -12,13 +13,13 @@ const server = Bun.serve({
   fetch: buildApp().fetch,
 });
 
-console.log(JSON.stringify({ msg: 'listening', port: config.PORT }));
+logger.info({ port: config.PORT }, 'listening');
 
 async function shutdown() {
-  console.log(JSON.stringify({ msg: 'shutting down' }));
+  logger.info('shutting down');
   await server.stop();
   await batcher.close();
-  await sql.end({ timeout: 5 });
+  await client.end({ timeout: 5 });
   process.exit(0);
 }
 

@@ -4,4 +4,4 @@ WORKDIR /app
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "bun install && bun run dev"]
+CMD ["sh", "-c", "bun install && bun run db:migrate && bun run dev"]

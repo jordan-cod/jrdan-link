@@ -1,6 +1,7 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 
 import { registerLinkRoutes } from '@/domains/link/link.routes';
+import { logger } from '@/logger';
 
 const SCALAR_HTML = `<!doctype html>
 <html>
@@ -53,7 +54,7 @@ export function buildApp(): OpenAPIHono {
   registerLinkRoutes(app);
 
   app.onError((err, c) => {
-    console.error('unhandled error', err);
+    logger.error({ err }, 'unhandled error');
     return c.json({ error: 'internal error' }, 500);
   });
 

@@ -1,4 +1,7 @@
-import { sql, type LinkRow } from '@/db';
+import { and, desc, eq } from 'drizzle-orm';
+
+import { db, type LinkRow } from '@/db';
+import { links } from '@/db/schema';
 
 const SLUG_PATTERN = /^[a-zA-Z0-9_-]{3,32}$/;
 const ID_ALPHABET = '23456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -59,19 +62,24 @@ function validateUrl(raw: string) {
 }
 
 function isUniqueViolation(err: unknown): boolean {
-  return typeof err === 'object' && err !== null && 'code' in err && err.code === UNIQUE_VIOLATION;
+  if (typeof err !== 'object' || err === null) return false;
+  const code = (err as { code?: string }).code ?? (err as { cause?: { code?: string } }).cause?.code;
+  return code === UNIQUE_VIOLATION;
 }
 
 export async function resolve(id: string): Promise<LinkRow> {
   let link = cacheGet(id);
   if (!link) {
-    const rows = await sql<LinkRow[]>`SELECT * FROM links WHERE id = ${id} AND active = true`;
+    const rows = await db
+      .select()
+      .from(links)
+      .where(and(eq(links.id, id), eq(links.active, true)));
     if (rows.length === 0) throw new NotFoundError();
     link = rows[0]!;
     cacheSet(id, link);
   }
 
-  if (link.expires_at && link.expires_at < new Date()) throw new NotFoundError();
+  if (link.expiresAt && link.expiresAt < new Date()) throw new NotFoundError();
   return link;
 }
 
@@ -81,10 +89,7 @@ export async function create(url: string, slug?: string, expiresAt?: Date): Prom
   if (slug) {
     if (!SLUG_PATTERN.test(slug)) throw new InvalidSlugError();
     try {
-      const rows = await sql<LinkRow[]>`
-        INSERT INTO links (id, url, expires_at)
-        VALUES (${slug}, ${url}, ${expiresAt ?? null})
-        RETURNING *`;
+      const rows = await db.insert(links).values({ id: slug, url, expiresAt }).returning();
       return rows[0]!;
     } catch (err) {
       if (isUniqueViolation(err)) throw new SlugTakenError();
@@ -94,10 +99,7 @@ export async function create(url: string, slug?: string, expiresAt?: Date): Prom
 
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      const rows = await sql<LinkRow[]>`
-        INSERT INTO links (id, url, expires_at)
-        VALUES (${newShortId()}, ${url}, ${expiresAt ?? null})
-        RETURNING *`;
+      const rows = await db.insert(links).values({ id: newShortId(), url, expiresAt }).returning();
       return rows[0]!;
     } catch (err) {
       if (!isUniqueViolation(err)) throw err;
@@ -115,13 +117,18 @@ export interface UpdateParams {
 export async function update(id: string, params: UpdateParams): Promise<LinkRow> {
   if (params.url !== undefined) validateUrl(params.url);
 
-  const rows = await sql<LinkRow[]>`
-    UPDATE links SET
-      url        = coalesce(${params.url ?? null}, url),
-      expires_at = coalesce(${params.expiresAt ?? null}, expires_at),
-      active     = coalesce(${params.active ?? null}, active)
-    WHERE id = ${id}
-    RETURNING *`;
+  const set: Partial<typeof links.$inferInsert> = {};
+  if (params.url !== undefined) set.url = params.url;
+  if (params.expiresAt !== undefined) set.expiresAt = params.expiresAt;
+  if (params.active !== undefined) set.active = params.active;
+
+  if (Object.keys(set).length === 0) {
+    const rows = await db.select().from(links).where(eq(links.id, id));
+    if (rows.length === 0) throw new NotFoundError();
+    return rows[0]!;
+  }
+
+  const rows = await db.update(links).set(set).where(eq(links.id, id)).returning();
   if (rows.length === 0) throw new NotFoundError();
 
   cache.delete(id);
@@ -129,13 +136,10 @@ export async function update(id: string, params: UpdateParams): Promise<LinkRow>
 }
 
 export async function deactivate(id: string): Promise<void> {
-  await sql`UPDATE links SET active = false WHERE id = ${id}`;
+  await db.update(links).set({ active: false }).where(eq(links.id, id));
   cache.delete(id);
 }
 
 export async function list(limit: number, offset: number): Promise<LinkRow[]> {
-  return sql<LinkRow[]>`
-    SELECT * FROM links
-    ORDER BY created_at DESC
-    LIMIT ${limit} OFFSET ${offset}`;
+  return db.select().from(links).orderBy(desc(links.createdAt)).limit(limit).offset(offset);
 }

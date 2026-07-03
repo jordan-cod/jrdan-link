@@ -1,13 +1,8 @@
-import { sql } from '@/db';
+import { db } from '@/db';
+import { clicks } from '@/db/schema';
+import { logger } from '@/logger';
 
-export interface ClickEvent {
-  link_id: string;
-  ts: Date;
-  user_agent: string | null;
-  referrer: string | null;
-  device: string;
-  is_bot: boolean;
-}
+export type ClickEvent = typeof clicks.$inferInsert;
 
 const MAX_BUFFER = 10_000;
 const MAX_BATCH = 1_000;
@@ -25,7 +20,7 @@ class Batcher {
 
   record(event: ClickEvent) {
     if (this.buffer.length >= MAX_BUFFER) {
-      console.warn(`click dropped: buffer full (link_id=${event.link_id})`);
+      logger.warn({ linkId: event.linkId }, 'click dropped: buffer full');
       return;
     }
     this.buffer.push(event);
@@ -37,9 +32,9 @@ class Batcher {
     const batch = this.buffer;
     this.buffer = [];
     try {
-      await sql`INSERT INTO clicks ${sql(batch)}`;
+      await db.insert(clicks).values(batch);
     } catch (err) {
-      console.error(`flush clicks failed (count=${batch.length})`, err);
+      logger.error({ err, count: batch.length }, 'flush clicks failed');
     }
   }
 
