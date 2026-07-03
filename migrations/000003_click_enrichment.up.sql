@@ -1,3 +1,0 @@
-ALTER TABLE clicks
-    ADD COLUMN device TEXT,
-    ADD COLUMN is_bot BOOLEAN NOT NULL DEFAULT false;

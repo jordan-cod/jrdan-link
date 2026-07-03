@@ -13,7 +13,9 @@ CREATE TABLE clicks (
     ip         INET,
     user_agent TEXT,
     referrer   TEXT,
-    country    TEXT
+    country    TEXT,
+    device     TEXT,
+    is_bot     BOOLEAN NOT NULL DEFAULT false
 );
 
 CREATE INDEX clicks_link_ts_idx ON clicks (link_id, ts DESC);

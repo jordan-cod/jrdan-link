@@ -133,59 +133,9 @@ export async function deactivate(id: string): Promise<void> {
   cache.delete(id);
 }
 
-export type LinkWithClicks = LinkRow & { total_clicks: string };
-
-export async function list(limit: number, offset: number): Promise<LinkWithClicks[]> {
-  return sql<LinkWithClicks[]>`
-    SELECT l.*,
-           (SELECT count(*) FROM clicks c WHERE c.link_id = l.id AND NOT c.is_bot) AS total_clicks
-    FROM links l
-    ORDER BY l.created_at DESC
+export async function list(limit: number, offset: number): Promise<LinkRow[]> {
+  return sql<LinkRow[]>`
+    SELECT * FROM links
+    ORDER BY created_at DESC
     LIMIT ${limit} OFFSET ${offset}`;
-}
-
-export interface LinkStats {
-  total_clicks: number;
-  clicks_24h: number;
-  clicks_7d: number;
-  daily: { day: string; clicks: number }[];
-  top_referrers: { name: string; clicks: number }[];
-  devices: { name: string; clicks: number }[];
-}
-
-export async function stats(id: string): Promise<LinkStats> {
-  const [totals, daily, referrers, devices] = await Promise.all([
-    sql`
-      SELECT
-        count(*)::int AS total_clicks,
-        (count(*) FILTER (WHERE ts > now() - interval '24 hours'))::int AS clicks_24h,
-        (count(*) FILTER (WHERE ts > now() - interval '7 days'))::int AS clicks_7d
-      FROM clicks
-      WHERE link_id = ${id} AND NOT is_bot`,
-    sql`
-      SELECT date_trunc('day', ts)::date::text AS day, count(*)::int AS clicks
-      FROM clicks
-      WHERE link_id = ${id} AND NOT is_bot AND ts > now() - interval '30 days'
-      GROUP BY day ORDER BY day DESC`,
-    sql`
-      SELECT coalesce(referrer, '(direct)') AS name, count(*)::int AS clicks
-      FROM clicks
-      WHERE link_id = ${id} AND NOT is_bot
-      GROUP BY name ORDER BY clicks DESC LIMIT 10`,
-    sql`
-      SELECT coalesce(device, 'unknown') AS name, count(*)::int AS clicks
-      FROM clicks
-      WHERE link_id = ${id} AND NOT is_bot
-      GROUP BY name ORDER BY clicks DESC`,
-  ]);
-
-  const t = totals[0] as { total_clicks: number; clicks_24h: number; clicks_7d: number };
-  return {
-    total_clicks: t.total_clicks,
-    clicks_24h: t.clicks_24h,
-    clicks_7d: t.clicks_7d,
-    daily: daily as unknown as LinkStats['daily'],
-    top_referrers: referrers as unknown as LinkStats['top_referrers'],
-    devices: devices as unknown as LinkStats['devices'],
-  };
 }

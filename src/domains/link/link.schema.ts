@@ -27,20 +27,4 @@ export const updateLinkSchema = z.object({
   active: z.boolean().optional().openapi({ description: 'Ativar/desativar' }),
 });
 
-const namedClicksSchema = z.object({
-  name: z.string().openapi({ example: 'mobile' }),
-  clicks: z.number(),
-});
-
-export const statsSchema = z
-  .object({
-    total_clicks: z.number(),
-    clicks_24h: z.number(),
-    clicks_7d: z.number(),
-    daily: z.array(z.object({ day: z.string().openapi({ example: '2026-07-02' }), clicks: z.number() })),
-    top_referrers: z.array(namedClicksSchema),
-    devices: z.array(namedClicksSchema),
-  })
-  .openapi('LinkStats');
-
 export const errorSchema = z.object({ error: z.string() }).openapi('Error');

@@ -14,10 +14,9 @@ import {
   NotFoundError,
   resolve,
   SlugTakenError,
-  stats,
   update,
 } from '@/domains/link/link.service';
-import { createLinkSchema, errorSchema, linkSchema, statsSchema, updateLinkSchema } from '@/domains/link/link.schema';
+import { createLinkSchema, errorSchema, linkSchema, updateLinkSchema } from '@/domains/link/link.schema';
 import { apiKeyAuth } from '@/http/auth';
 
 function toLinkBody(link: LinkRow) {
@@ -80,7 +79,7 @@ const listLinksRoute = createRoute({
     200: {
       content: {
         'application/json': {
-          schema: z.object({ links: z.array(linkSchema.extend({ total_clicks: z.number() })) }),
+          schema: z.object({ links: z.array(linkSchema) }),
         },
       },
       description: 'Links',
@@ -121,21 +120,6 @@ const deleteLinkRoute = createRoute({
   },
 });
 
-const statsRoute = createRoute({
-  method: 'get',
-  path: '/links/{id}/stats',
-  summary: 'Link stats',
-  description: 'Totais, série diária (30d), top referrers e devices, sem bots. Requer `X-API-Key`.',
-  tags: ['Links'],
-  security: [{ apiKey: [] }],
-  middleware: [apiKeyAuth] as const,
-  request: { params: idParam },
-  responses: {
-    200: { content: { 'application/json': { schema: statsSchema } }, description: 'Estatísticas' },
-    404: { content: { 'application/json': { schema: errorSchema } }, description: 'Link não existe' },
-  },
-});
-
 const qrRoute = createRoute({
   method: 'get',
   path: '/links/{id}/qr.png',
@@ -171,10 +155,7 @@ export function registerLinkRoutes(app: OpenAPIHono) {
   app.openapi(listLinksRoute, async (c) => {
     const { limit, offset } = c.req.valid('query');
     const rows = await list(limit, offset);
-    return c.json(
-      { links: rows.map((r) => ({ ...toLinkBody(r), total_clicks: Number(r.total_clicks) })) },
-      200,
-    );
+    return c.json({ links: rows.map(toLinkBody) }, 200);
   });
 
   app.openapi(updateLinkRoute, async (c) => {
@@ -194,17 +175,6 @@ export function registerLinkRoutes(app: OpenAPIHono) {
     const { id } = c.req.valid('param');
     await deactivate(id);
     return c.body(null, 204);
-  });
-
-  app.openapi(statsRoute, async (c) => {
-    const { id } = c.req.valid('param');
-    try {
-      await resolve(id);
-      return c.json(await stats(id), 200);
-    } catch (err) {
-      if (err instanceof NotFoundError) return c.json({ error: 'link not found' }, 404);
-      throw err;
-    }
   });
 
   app.openapi(qrRoute, async (c) => {
