@@ -1,13 +1,7 @@
-FROM golang:1.25-alpine
+FROM oven/bun:1
 
 WORKDIR /app
 
-RUN apk add --no-cache git \
- && go install github.com/air-verse/air@latest
-
-COPY go.mod go.sum* ./
-RUN go mod download 2>/dev/null || true
-
 EXPOSE 8080
 
-CMD ["air", "-c", ".air.toml"]
+CMD ["sh", "-c", "bun install && bun run dev"]

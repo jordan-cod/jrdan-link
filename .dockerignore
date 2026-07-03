@@ -2,9 +2,8 @@
 .gitignore
 .env
 tmp/
-bin/
+node_modules/
 *.log
 docker/grafana/
 migrations/
-queries/
 README.md

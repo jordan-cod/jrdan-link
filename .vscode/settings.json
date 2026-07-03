@@ -1,25 +1,14 @@
 {
-  // Arquivos gerados — não editar na mão
   "files.readonlyInclude": {
-    "internal/db/**": true,
-    "go.sum": true
+    "bun.lock": true
   },
-  "gopls": {
-    "formatting.gofumpt": true
-  },
-  "go.lintTool": "golangci-lint",
-  "[go]": {
-    "editor.formatOnSave": true,
-    "editor.defaultFormatter": "golang.go"
-  },
-  "[sql]": {
-    "editor.formatOnSave": false
-  },
+  "editor.formatOnSave": true,
+  "typescript.tsdk": "node_modules/typescript/lib",
   "files.exclude": {
     "tmp": true
   },
   "search.exclude": {
-    "internal/db": true,
-    "go.sum": true
+    "bun.lock": true,
+    "node_modules": true
   }
 }
