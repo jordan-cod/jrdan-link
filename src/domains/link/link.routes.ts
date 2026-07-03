@@ -5,7 +5,7 @@ import { config } from '@/config';
 import type { Link } from '@/domains/link/link.entity';
 import { recordClick } from '@/domains/click/use-cases/record-click';
 import { NotFoundError, SlugTakenError } from '@/domains/link/link.errors';
-import { createLinkSchema, errorSchema, linkSchema, updateLinkSchema } from '@/domains/link/link.schema';
+import { createLinkSchema, errorSchema, linkSchema, listLinksQuerySchema, updateLinkSchema } from '@/domains/link/link.schema';
 import { createLink } from '@/domains/link/use-cases/create-link';
 import { deactivateLink } from '@/domains/link/use-cases/deactivate-link';
 import { listLinks } from '@/domains/link/use-cases/list-links';
@@ -62,12 +62,7 @@ const listLinksRoute = createRoute({
   tags: ['Links'],
   security: [{ apiKey: [] }],
   middleware: [apiKeyAuth] as const,
-  request: {
-    query: z.object({
-      limit: z.coerce.number().min(1).max(100).default(20),
-      offset: z.coerce.number().min(0).default(0),
-    }),
-  },
+  request: { query: listLinksQuerySchema },
   responses: {
     200: {
       content: {
@@ -134,7 +129,7 @@ export function registerLinkRoutes(app: OpenAPIHono) {
   app.openapi(createLinkRoute, async (c) => {
     const body = c.req.valid('json');
     try {
-      const link = await createLink({ url: body.url, slug: body.slug, expiresAt: body.expires_at });
+      const link = await createLink(body);
       return c.json(toLinkBody(link), 201);
     } catch (err) {
       if (err instanceof SlugTakenError) return c.json({ error: 'slug already taken' }, 409);
@@ -143,8 +138,7 @@ export function registerLinkRoutes(app: OpenAPIHono) {
   });
 
   app.openapi(listLinksRoute, async (c) => {
-    const { limit, offset } = c.req.valid('query');
-    const rows = await listLinks({ limit, offset });
+    const rows = await listLinks(c.req.valid('query'));
     return c.json({ links: rows.map(toLinkBody) }, 200);
   });
 
@@ -152,7 +146,7 @@ export function registerLinkRoutes(app: OpenAPIHono) {
     const { id } = c.req.valid('param');
     const body = c.req.valid('json');
     try {
-      const link = await updateLink(id, { url: body.url, expiresAt: body.expires_at, active: body.active });
+      const link = await updateLink(id, body);
       return c.json(toLinkBody(link), 200);
     } catch (err) {
       if (err instanceof NotFoundError) return c.json({ error: 'link not found' }, 404);
