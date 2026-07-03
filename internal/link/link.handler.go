@@ -56,8 +56,6 @@ func (h *Handler) Register(api huma.API) {
 	}, h.stats)
 }
 
-// ------------------------------- redirect -------------------------------
-
 type redirectInput struct {
 	ID        string `path:"id" doc:"Short ID do link" example:"aB3xK9pQ"`
 	UserAgent string `header:"User-Agent"`
@@ -88,8 +86,6 @@ func (h *Handler) redirect(ctx context.Context, in *redirectInput) (*redirectOut
 
 	return &redirectOutput{Status: http.StatusFound, Location: link.Url}, nil
 }
-
-// ------------------------------ createLink ------------------------------
 
 type createLinkInput struct {
 	Body struct {
@@ -125,8 +121,6 @@ func (h *Handler) createLink(ctx context.Context, in *createLinkInput) (*createL
 	out.Body.CreatedAt = link.CreatedAt.Time
 	return out, nil
 }
-
-// -------------------------------- stats ---------------------------------
 
 type statsInput struct {
 	ID string `path:"id" doc:"Short ID do link"`

@@ -16,8 +16,6 @@ type Event struct {
 	Referrer  string
 }
 
-// Batcher acumula clicks num channel e grava em lote via COPY,
-// tirando o write do hot path do redirect.
 type Batcher struct {
 	pool      *pgxpool.Pool
 	log       *slog.Logger
@@ -38,8 +36,6 @@ func NewBatcher(pool *pgxpool.Pool, log *slog.Logger) *Batcher {
 	}
 }
 
-// Record enfileira sem bloquear; sob backpressure extrema descarta
-// (perder um click de analytics é melhor que travar o redirect).
 func (b *Batcher) Record(e Event) {
 	select {
 	case b.ch <- e:
@@ -48,7 +44,6 @@ func (b *Batcher) Record(e Event) {
 	}
 }
 
-// Run consome o channel até ele ser fechado, então drena e sinaliza done.
 func (b *Batcher) Run() {
 	defer close(b.done)
 
@@ -77,7 +72,6 @@ func (b *Batcher) Run() {
 	}
 }
 
-// Close para de aceitar eventos e espera o drain terminar.
 func (b *Batcher) Close() {
 	close(b.ch)
 	<-b.done

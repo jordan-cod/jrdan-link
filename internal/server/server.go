@@ -8,12 +8,10 @@ import (
 	"github.com/danielgtaylor/huma/v2/adapters/humago"
 )
 
-// Registrar é implementado pelos handlers de domínio (link, click...).
 type Registrar interface {
 	Register(api huma.API)
 }
 
-// New monta o huma.API com middleware de auth e registra os domínios.
 func New(apiKey string, domains ...Registrar) http.Handler {
 	mux := http.NewServeMux()
 

@@ -19,8 +19,6 @@ var (
 	ErrInvalidURL = errors.New("invalid url")
 )
 
-// Service resolve e cria links, com cache LRU em memória no read path:
-// hot links respondem da RAM sem tocar no Postgres.
 type Service struct {
 	q     *db.Queries
 	cache *expirable.LRU[string, db.Link]
@@ -33,7 +31,6 @@ func NewService(q *db.Queries) *Service {
 	}
 }
 
-// Resolve retorna o link ativo e não expirado, ou ErrNotFound.
 func (s *Service) Resolve(ctx context.Context, id string) (db.Link, error) {
 	link, ok := s.cache.Get(id)
 	if !ok {

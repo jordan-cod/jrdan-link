@@ -5,7 +5,6 @@ import (
 	"math/big"
 )
 
-// Alfabeto sem caracteres ambíguos (0/O, 1/l/I).
 const alphabet = "23456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ"
 
 func newShortID(n int) (string, error) {

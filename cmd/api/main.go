@@ -74,6 +74,5 @@ func main() {
 	defer shutdownCancel()
 	_ = httpSrv.Shutdown(shutdownCtx)
 
-	// Depois que o HTTP parou de aceitar requests, drena os clicks pendentes.
 	batcher.Close()
 }
