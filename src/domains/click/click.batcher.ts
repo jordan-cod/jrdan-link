@@ -1,6 +1,8 @@
-import type { NewClick } from '@/domains/click/click.entity';
-import type { ClickRepository } from '@/domains/click/click.repository';
-import { logger } from '@/logger';
+import { PostgresqlClickRepository } from '@/adapters/database/postgresql/repositories/postgresql.click.repository';
+
+import type { IClickRepository } from '@/domains/click/click.repository.interface';
+import type { NewClick } from '@/domains/click/click.types';
+import { logger } from '@/shared/logger/logger';
 
 const MAX_BUFFER = 10_000;
 const MAX_BATCH = 1_000;
@@ -8,11 +10,11 @@ const FLUSH_INTERVAL_MS = 500;
 
 // Acumula clicks em memória e grava em lote, mantendo o write
 // fora do hot path do redirect.
-export class Batcher {
+export class ClickBatcher {
   private buffer: NewClick[] = [];
   private timer: Timer | null = null;
 
-  constructor(private readonly repository: ClickRepository) {}
+  constructor(private readonly clickRepository: IClickRepository) {}
 
   start() {
     this.timer = setInterval(() => void this.flush(), FLUSH_INTERVAL_MS);
@@ -32,7 +34,7 @@ export class Batcher {
     const batch = this.buffer;
     this.buffer = [];
     try {
-      await this.repository.insertMany(batch);
+      await this.clickRepository.insertMany(batch);
     } catch (err) {
       logger.error({ err, count: batch.length }, 'flush clicks failed');
     }
@@ -43,3 +45,6 @@ export class Batcher {
     await this.flush();
   }
 }
+
+// Singleton: o buffer precisa ser compartilhado entre requests.
+export const clickBatcher = new ClickBatcher(new PostgresqlClickRepository());

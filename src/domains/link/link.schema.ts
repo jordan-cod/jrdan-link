@@ -1,6 +1,10 @@
 import { z } from '@hono/zod-openapi';
 
-export const linkSchema = z
+export const linkIdParamSchema = z.object({
+  id: z.string().openapi({ example: 'aB3xK9pQ' }),
+});
+
+export const linkResponseSchema = z
   .object({
     id: z.string().openapi({ example: 'aB3xK9pQ' }),
     url: z.string().openapi({ example: 'https://github.com' }),
@@ -12,7 +16,9 @@ export const linkSchema = z
   .openapi('Link');
 
 export const createLinkSchema = z.object({
-  url: z.url({ protocol: /^https?$/ }).openapi({ description: 'URL destino (http/https)', example: 'https://github.com' }),
+  url: z
+    .url({ protocol: /^https?$/ })
+    .openapi({ description: 'URL destino (http/https)', example: 'https://github.com' }),
   slug: z
     .string()
     .regex(/^[a-zA-Z0-9_-]{3,32}$/)
@@ -22,7 +28,10 @@ export const createLinkSchema = z.object({
 });
 
 export const updateLinkSchema = z.object({
-  url: z.url({ protocol: /^https?$/ }).optional().openapi({ description: 'Novo destino (http/https)' }),
+  url: z
+    .url({ protocol: /^https?$/ })
+    .optional()
+    .openapi({ description: 'Novo destino (http/https)' }),
   expires_at: z.coerce.date().optional().openapi({ description: 'Nova expiração' }),
   active: z.boolean().optional().openapi({ description: 'Ativar/desativar' }),
 });
@@ -32,4 +41,6 @@ export const listLinksQuerySchema = z.object({
   offset: z.coerce.number().min(0).default(0),
 });
 
-export const errorSchema = z.object({ error: z.string() }).openapi('Error');
+export const qrQuerySchema = z.object({
+  size: z.coerce.number().min(64).max(1024).default(256).openapi({ description: 'Lado do PNG em pixels' }),
+});

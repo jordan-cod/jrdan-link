@@ -1,8 +1,8 @@
-import { config } from '@/config';
-import { client } from '@/infrastructure/database/client';
-import { clickBatcher } from '@/container';
-import { buildApp } from '@/http/app';
-import { logger } from '@/logger';
+import { client } from '@/adapters/database/postgresql/postgresql.client';
+import { buildApp } from '@/app';
+import { clickBatcher } from '@/domains/click/click.batcher';
+import { config } from '@/shared/config/config';
+import { logger } from '@/shared/logger/logger';
 
 await client`SELECT 1`;
 
