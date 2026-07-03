@@ -3,17 +3,14 @@ import { createRoute, type OpenAPIHono } from '@hono/zod-openapi';
 import { linkIdParamSchema, linkResponseSchema, updateLinkSchema } from '@/domains/link/link.schema';
 import { LinkService } from '@/domains/link/link.service';
 import { toLinkResponse } from '@/domains/link/routes/link.mapper';
-import { apiKeyAuth } from '@/middlewares/api-key-auth.middleware';
 import { errorResponseSchema } from '@/shared/schemas/error.schema';
 
 const route = createRoute({
   method: 'patch',
   path: '/links/{id}',
   summary: 'Update link',
-  description: 'Altera destino, expiração ou status. Campos omitidos não mudam. Requer `X-API-Key`.',
+  description: 'Altera destino, expiração ou status. Campos omitidos não mudam.',
   tags: ['Links'],
-  security: [{ apiKey: [] }],
-  middleware: [apiKeyAuth] as const,
   request: {
     params: linkIdParamSchema,
     body: { content: { 'application/json': { schema: updateLinkSchema } } },

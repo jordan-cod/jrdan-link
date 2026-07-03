@@ -26,7 +26,6 @@ services:
     environment:
       PORT: "8080"
       DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}?sslmode=disable
-      API_KEY: ${API_KEY}
     volumes:
       - .:/app
       - node_modules:/app/node_modules

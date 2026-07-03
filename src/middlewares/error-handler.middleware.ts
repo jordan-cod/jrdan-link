@@ -5,7 +5,7 @@ import { logger } from '@/shared/logger/logger';
 
 export function errorHandler(err: Error, c: Context): Response {
   if (err instanceof AppError) {
-    return c.json({ code: err.code, error: err.message }, err.statusCode as 401 | 404 | 409);
+    return c.json({ code: err.code, error: err.message }, err.statusCode as 404 | 409);
   }
 
   logger.error({ err }, 'unhandled error');

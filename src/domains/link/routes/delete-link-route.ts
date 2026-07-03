@@ -2,16 +2,13 @@ import { createRoute, type OpenAPIHono } from '@hono/zod-openapi';
 
 import { linkIdParamSchema } from '@/domains/link/link.schema';
 import { LinkService } from '@/domains/link/link.service';
-import { apiKeyAuth } from '@/middlewares/api-key-auth.middleware';
 
 const route = createRoute({
   method: 'delete',
   path: '/links/{id}',
   summary: 'Deactivate link',
-  description: 'Desativa o link (soft delete). Requer `X-API-Key`.',
+  description: 'Desativa o link (soft delete).',
   tags: ['Links'],
-  security: [{ apiKey: [] }],
-  middleware: [apiKeyAuth] as const,
   request: { params: linkIdParamSchema },
   responses: {
     204: { description: 'Link desativado' },

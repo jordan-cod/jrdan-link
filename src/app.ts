@@ -34,12 +34,6 @@ export function buildApp(): OpenAPIHono {
 
   app.onError(errorHandler);
 
-  app.openAPIRegistry.registerComponent('securitySchemes', 'apiKey', {
-    type: 'apiKey',
-    in: 'header',
-    name: 'X-API-Key',
-  });
-
   app.doc('/openapi.json', {
     openapi: '3.1.0',
     info: {

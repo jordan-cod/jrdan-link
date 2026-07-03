@@ -3,16 +3,13 @@ import { createRoute, type OpenAPIHono, z } from '@hono/zod-openapi';
 import { linkResponseSchema, listLinksQuerySchema } from '@/domains/link/link.schema';
 import { LinkService } from '@/domains/link/link.service';
 import { toLinkResponse } from '@/domains/link/routes/link.mapper';
-import { apiKeyAuth } from '@/middlewares/api-key-auth.middleware';
 
 const route = createRoute({
   method: 'get',
   path: '/links',
   summary: 'List links',
-  description: 'Lista links, paginado. Requer `X-API-Key`.',
+  description: 'Lista links, paginado.',
   tags: ['Links'],
-  security: [{ apiKey: [] }],
-  middleware: [apiKeyAuth] as const,
   request: { query: listLinksQuerySchema },
   responses: {
     200: {
