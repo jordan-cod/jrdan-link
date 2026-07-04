@@ -1,5 +1,7 @@
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
+
 export abstract class AppError extends Error {
-  abstract readonly statusCode: number;
+  abstract readonly statusCode: ContentfulStatusCode;
 
   constructor(
     readonly code: string,
