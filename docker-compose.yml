@@ -59,6 +59,11 @@ services:
     image: redis/redisinsight:latest
     container_name: tracker-redisinsight
     restart: unless-stopped
+    environment:
+      RI_ACCEPT_TERMS_AND_CONDITIONS: "true"
+      RI_REDIS_HOST: redis
+      RI_REDIS_PORT: "6379"
+      RI_REDIS_ALIAS: tracker
     volumes:
       - redisinsight_data:/data
     depends_on:
