@@ -7,6 +7,7 @@ import { newShortId } from './shared/short-id';
 
 interface Env {
   LINKS: KVNamespace;
+  ADMIN_API_KEY: string;
   CF_ZONE_ID?: string;
   CF_API_TOKEN?: string;
 }
@@ -44,6 +45,14 @@ const createSchema = z.object({
 const updateSchema = z.object({ url: httpUrl });
 
 const app = new Hono<{ Bindings: Env }>();
+
+app.use('*', async (c, next) => {
+  const key = c.req.header('authorization')?.replace(/^Bearer\s+/i, '');
+  if (!key || key !== c.env.ADMIN_API_KEY) {
+    return c.json({ error: 'unauthorized' }, 401);
+  }
+  await next();
+});
 
 app.post('/links', zValidator('json', createSchema), async (c) => {
   const { url, slug, expiresIn } = c.req.valid('json');
