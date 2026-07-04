@@ -1,6 +1,6 @@
 import { client } from '@/adapters/database/postgresql/postgresql.client';
 import { buildApp } from '@/app';
-import { clickBatcher } from '@/domains/click/click.batcher';
+import { clickBatcher } from '@/container';
 import { config } from '@/shared/config/config';
 import { logger } from '@/shared/logger/logger';
 

@@ -1,13 +1,15 @@
 import { isbot } from 'isbot';
 import { UAParser } from 'ua-parser-js';
 
-import { clickBatcher } from '@/domains/click/click.batcher';
+import type { ClickBatcher } from '@/domains/click/click.batcher';
 import type { Device, RecordClickInput } from '@/domains/click/click.types';
 
 export class ClickService {
+  constructor(private readonly clickBatcher: ClickBatcher) {}
+
   recordClick(input: RecordClickInput): void {
     const { device, isBot } = this.classify(input.userAgent ?? '');
-    clickBatcher.record({
+    this.clickBatcher.record({
       linkId: input.linkId,
       ts: new Date(),
       userAgent: input.userAgent,

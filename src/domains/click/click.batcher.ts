@@ -1,5 +1,3 @@
-import { PostgresqlClickRepository } from '@/adapters/database/postgresql/repositories/postgresql.click.repository';
-
 import type { IClickRepository } from '@/domains/click/click.repository.interface';
 import type { NewClick } from '@/domains/click/click.types';
 import { logger } from '@/shared/logger/logger';
@@ -45,6 +43,3 @@ export class ClickBatcher {
     await this.flush();
   }
 }
-
-// Singleton: o buffer precisa ser compartilhado entre requests.
-export const clickBatcher = new ClickBatcher(new PostgresqlClickRepository());

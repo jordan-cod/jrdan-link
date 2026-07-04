@@ -1,7 +1,7 @@
 import { createRoute, type OpenAPIHono, z } from '@hono/zod-openapi';
 import QRCode from 'qrcode';
 
-import { ClickService } from '@/domains/click/click.service';
+import { clickService, linkService } from '@/container';
 import {
   createLinkSchema,
   linkIdParamSchema,
@@ -10,7 +10,6 @@ import {
   qrQuerySchema,
   updateLinkSchema,
 } from '@/domains/link/link.schema';
-import { LinkService } from '@/domains/link/link.service';
 import type { Link } from '@/domains/link/link.types';
 import { config } from '@/shared/config/config';
 import { errorResponseSchema } from '@/shared/schemas/error.schema';
@@ -110,27 +109,27 @@ const redirect = createRoute({
 
 export function registerLinkRoutes(app: OpenAPIHono) {
   app.openapi(createLink, async (c) => {
-    const link = await new LinkService().createLink(c.req.valid('json'));
+    const link = await linkService.createLink(c.req.valid('json'));
     return c.json(toLinkResponse(link), 201);
   });
 
   app.openapi(listLinks, async (c) => {
-    const links = await new LinkService().listLinks(c.req.valid('query'));
+    const links = await linkService.listLinks(c.req.valid('query'));
     return c.json({ links: links.map(toLinkResponse) }, 200);
   });
 
   app.openapi(updateLink, async (c) => {
-    const link = await new LinkService().updateLink(c.req.valid('param').id, c.req.valid('json'));
+    const link = await linkService.updateLink(c.req.valid('param').id, c.req.valid('json'));
     return c.json(toLinkResponse(link), 200);
   });
 
   app.openapi(deleteLink, async (c) => {
-    await new LinkService().deactivateLink(c.req.valid('param').id);
+    await linkService.deactivateLink(c.req.valid('param').id);
     return c.body(null, 204);
   });
 
   app.openapi(getLinkQr, async (c) => {
-    const link = await new LinkService().resolveLink(c.req.valid('param').id);
+    const link = await linkService.resolveLink(c.req.valid('param').id);
     const png = await QRCode.toBuffer(`${config.BASE_URL}/${link.id}`, {
       width: c.req.valid('query').size,
       margin: 1,
@@ -140,10 +139,9 @@ export function registerLinkRoutes(app: OpenAPIHono) {
 
   // Por último: /{id} é catch-all e não pode engolir /links.
   app.openapi(redirect, async (c) => {
-    const linkService = new LinkService();
     const link = await linkService.resolveLink(c.req.valid('param').id);
 
-    new ClickService().recordClick({
+    clickService.recordClick({
       linkId: link.id,
       userAgent: c.req.header('user-agent') ?? null,
       referrer: c.req.header('referer') ?? null,

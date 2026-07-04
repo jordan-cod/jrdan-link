@@ -1,5 +1,4 @@
 import { isUniqueViolation } from '@/adapters/database/postgresql/postgresql.errors';
-import { PostgresqlLinkRepository } from '@/adapters/database/postgresql/repositories/postgresql.link.repository';
 
 import { LinkExceptions } from '@/domains/link/link.exceptions';
 import type { ILinkRepository } from '@/domains/link/link.repository.interface';
@@ -10,11 +9,7 @@ const ID_LENGTH = 8;
 const MAX_ID_ATTEMPTS = 3;
 
 export class LinkService {
-  private readonly linkRepository: ILinkRepository;
-
-  constructor() {
-    this.linkRepository = new PostgresqlLinkRepository();
-  }
+  constructor(private readonly linkRepository: ILinkRepository) {}
 
   async resolveLink(id: string): Promise<Link> {
     const link = await this.linkRepository.findActiveById(id);
