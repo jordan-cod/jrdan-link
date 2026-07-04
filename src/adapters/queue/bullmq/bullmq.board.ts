@@ -1,21 +1,18 @@
 import { createBullBoard } from '@bull-board/api';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { HonoAdapter } from '@bull-board/hono';
-import type { OpenAPIHono } from '@hono/zod-openapi';
+import type { Queue } from 'bullmq';
+import type { Hono } from 'hono';
 import { serveStatic } from 'hono/bun';
 
-import { clickQueue } from '@/container';
-
-export const QUEUE_BOARD_PATH = '/admin/queues';
-
-export function registerQueueBoard(app: OpenAPIHono) {
+export function registerQueueBoard(app: Hono, queues: Queue[], basePath: string) {
   const serverAdapter = new HonoAdapter(serveStatic);
 
   createBullBoard({
-    queues: [new BullMQAdapter(clickQueue.queue)],
+    queues: queues.map((queue) => new BullMQAdapter(queue)),
     serverAdapter,
   });
 
-  serverAdapter.setBasePath(QUEUE_BOARD_PATH);
-  app.route(QUEUE_BOARD_PATH, serverAdapter.registerPlugin());
+  serverAdapter.setBasePath(basePath);
+  app.route(basePath, serverAdapter.registerPlugin());
 }

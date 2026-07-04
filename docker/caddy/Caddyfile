@@ -16,7 +16,7 @@ http://app.localhost {
 		zone redirect {
 			match {
 				method GET
-				not path /healthz /docs /openapi.yaml /admin/*
+				not path /healthz /docs /openapi.yaml
 			}
 			key {remote_host}
 			events 100
@@ -24,6 +24,10 @@ http://app.localhost {
 		}
 	}
 	reverse_proxy tracker:8080
+}
+
+http://queues.localhost {
+	reverse_proxy dashboard:8081
 }
 
 http://redis.localhost {
