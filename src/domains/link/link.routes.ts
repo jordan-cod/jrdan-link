@@ -141,7 +141,7 @@ export function registerLinkRoutes(app: OpenAPIHono) {
   app.openapi(redirect, async (c) => {
     const link = await linkService.resolveLink(c.req.valid('param').id);
 
-    clickService.recordClick({
+    await clickService.recordClick({
       linkId: link.id,
       userAgent: c.req.header('user-agent') ?? null,
       referrer: c.req.header('referer') ?? null,

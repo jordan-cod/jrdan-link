@@ -4,6 +4,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(8080),
   BASE_URL: z.string().default('http://app.localhost'),
   DATABASE_URL: z.string().min(1),
+  REDIS_URL: z.string().default('redis://localhost:6379'),
   LOG_LEVEL: z.string().default('info'),
 });
 
