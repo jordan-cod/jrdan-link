@@ -1,0 +1,7 @@
+{
+  "name": "jrdan-link-admin",
+  "main": "src/admin.ts",
+  "compatibility_date": "2025-01-01",
+  "kv_namespaces": [{ "binding": "LINKS", "id": "<KV_NAMESPACE_ID>" }],
+  "routes": [{ "pattern": "app.jrdan.link", "custom_domain": true }]
+}

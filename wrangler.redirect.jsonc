@@ -1,0 +1,7 @@
+{
+  "name": "jrdan-link-redirect",
+  "main": "src/redirect.ts",
+  "compatibility_date": "2025-01-01",
+  "kv_namespaces": [{ "binding": "LINKS", "id": "<KV_NAMESPACE_ID>" }],
+  "routes": [{ "pattern": "jrdan.link", "custom_domain": true }]
+}

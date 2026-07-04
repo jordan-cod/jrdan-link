@@ -1,9 +1,0 @@
-.git
-.gitignore
-.env
-tmp/
-node_modules/
-*.log
-docker/grafana/
-migrations/
-README.md
