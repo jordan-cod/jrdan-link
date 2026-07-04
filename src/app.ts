@@ -1,6 +1,6 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 
-import { registerLinkRoutes } from '@/domains/link/routes/router';
+import { registerLinkRoutes } from '@/domains/link/link.routes';
 import { errorHandler } from '@/middlewares/error-handler.middleware';
 
 const SCALAR_HTML = `<!doctype html>
