@@ -6,7 +6,8 @@ CREATE TABLE IF NOT EXISTS clicks (
   city       TEXT,
   region     TEXT,
   referer    TEXT,
-  user_agent TEXT
+  user_agent TEXT,
+  is_bot     INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE INDEX IF NOT EXISTS clicks_link_ts_idx ON clicks (link_id, ts DESC);

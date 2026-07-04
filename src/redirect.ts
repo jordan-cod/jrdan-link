@@ -1,3 +1,5 @@
+import { isbot } from 'isbot';
+
 interface Env {
   LINKS: KVNamespace;
   DB: D1Database;
@@ -8,9 +10,10 @@ const EDGE_TTL_SECONDS = 2_592_000;
 
 function recordClick(env: Env, ctx: ExecutionContext, id: string, request: Request): void {
   const cf = request.cf;
+  const userAgent = request.headers.get('user-agent');
   ctx.waitUntil(
     env.DB.prepare(
-      'INSERT INTO clicks (link_id, country, city, region, referer, user_agent) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO clicks (link_id, country, city, region, referer, user_agent, is_bot) VALUES (?, ?, ?, ?, ?, ?, ?)',
     )
       .bind(
         id,
@@ -18,7 +21,8 @@ function recordClick(env: Env, ctx: ExecutionContext, id: string, request: Reque
         (cf?.city as string) ?? null,
         (cf?.region as string) ?? null,
         request.headers.get('referer'),
-        request.headers.get('user-agent'),
+        userAgent,
+        isbot(userAgent) ? 1 : 0,
       )
       .run(),
   );
