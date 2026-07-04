@@ -7,7 +7,7 @@ export interface NewClick {
   isBot: boolean;
 }
 
-export type Device = 'mobile' | 'tablet' | 'desktop' | 'unknown';
+export type Device = 'MOBILE' | 'TABLET' | 'DESKTOP' | 'UNKNOWN';
 
 export interface RecordClickInput {
   linkId: string;

@@ -8,7 +8,7 @@ import { config } from '@/shared/config/config';
 import { logger } from '@/shared/logger/logger';
 
 const app = new Hono();
-const clickQueue = new BullmqQueue<'record-click', NewClick>(CLICKS_QUEUE);
+const clickQueue = new BullmqQueue<'RECORD_CLICK', NewClick>(CLICKS_QUEUE);
 
 registerQueueBoard(app, [clickQueue.queue], '/');
 

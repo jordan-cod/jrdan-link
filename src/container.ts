@@ -9,7 +9,7 @@ import { LinkService } from '@/domains/link/link.service';
 const linkRepository = new PostgresqlLinkRepository();
 export const clickRepository = new PostgresqlClickRepository();
 
-export const clickQueue = new BullmqQueue<'record-click', NewClick>(CLICKS_QUEUE);
+export const clickQueue = new BullmqQueue<'RECORD_CLICK', NewClick>(CLICKS_QUEUE);
 
 export const linkService = new LinkService(linkRepository);
 export const clickService = new ClickService(clickQueue, clickRepository);

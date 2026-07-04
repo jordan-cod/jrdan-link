@@ -7,13 +7,13 @@ import type { Device, NewClick, RecordClickInput } from '@/domains/click/click.t
 
 export class ClickService {
   constructor(
-    private readonly clickQueue: Queue<'record-click', NewClick>,
+    private readonly clickQueue: Queue<'RECORD_CLICK', NewClick>,
     private readonly clickRepository: IClickRepository,
   ) {}
 
   async recordClick(input: RecordClickInput): Promise<void> {
     const { device, isBot } = this.classify(input.userAgent ?? '');
-    await this.clickQueue.enqueue('record-click', {
+    await this.clickQueue.enqueue('RECORD_CLICK', {
       linkId: input.linkId,
       ts: new Date(),
       userAgent: input.userAgent,
@@ -28,17 +28,17 @@ export class ClickService {
   }
 
   private classify(ua: string): { device: Device; isBot: boolean } {
-    if (!ua) return { device: 'unknown', isBot: true };
-    if (isbot(ua)) return { device: 'unknown', isBot: true };
+    if (!ua) return { device: 'UNKNOWN', isBot: true };
+    if (isbot(ua)) return { device: 'UNKNOWN', isBot: true };
 
     const parsed = UAParser(ua);
     switch (parsed.device.type) {
       case 'mobile':
-        return { device: 'mobile', isBot: false };
+        return { device: 'MOBILE', isBot: false };
       case 'tablet':
-        return { device: 'tablet', isBot: false };
+        return { device: 'TABLET', isBot: false };
       default:
-        return { device: parsed.browser.name ? 'desktop' : 'unknown', isBot: false };
+        return { device: parsed.browser.name ? 'DESKTOP' : 'UNKNOWN', isBot: false };
     }
   }
 }

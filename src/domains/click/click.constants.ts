@@ -1,1 +1,1 @@
-export const CLICKS_QUEUE = 'clicks';
+export const CLICKS_QUEUE = 'CLICKS';
