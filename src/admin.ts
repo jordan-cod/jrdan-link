@@ -135,16 +135,28 @@ app.delete('/links/:id', async (c) => {
   return c.body(null, 204);
 });
 
+function dateRange(c: { req: { query: (k: string) => string | undefined } }) {
+  const from = c.req.query('from');
+  const to = c.req.query('to');
+  const clause = `${from ? ' AND ts >= ?' : ''}${to ? ' AND ts <= ?' : ''}`;
+  const args = [...(from ? [from] : []), ...(to ? [to] : [])];
+  return { clause, args };
+}
+
 app.get('/links/:id/stats', async (c) => {
   const id = c.req.param('id');
+  const { clause, args } = dateRange(c);
+  const where = `link_id = ?${clause}`;
+  const params = [id, ...args];
+
   const results = await c.env.DB.batch([
-    c.env.DB.prepare('SELECT count(*) AS clicks FROM clicks WHERE link_id = ?').bind(id),
+    c.env.DB.prepare(`SELECT count(*) AS clicks FROM clicks WHERE ${where}`).bind(...params),
     c.env.DB.prepare(
-      "SELECT coalesce(country, '??') AS country, count(*) AS clicks FROM clicks WHERE link_id = ? GROUP BY country ORDER BY clicks DESC LIMIT 20",
-    ).bind(id),
+      `SELECT coalesce(country, '??') AS country, count(*) AS clicks FROM clicks WHERE ${where} GROUP BY country ORDER BY clicks DESC LIMIT 20`,
+    ).bind(...params),
     c.env.DB.prepare(
-      "SELECT date(ts) AS day, count(*) AS clicks FROM clicks WHERE link_id = ? GROUP BY day ORDER BY day DESC LIMIT 30",
-    ).bind(id),
+      `SELECT date(ts) AS day, count(*) AS clicks FROM clicks WHERE ${where} GROUP BY day ORDER BY day DESC LIMIT 90`,
+    ).bind(...params),
   ]);
 
   const total = (results[0]?.results[0] as { clicks: number } | undefined)?.clicks ?? 0;
@@ -158,10 +170,11 @@ app.get('/links/:id/stats', async (c) => {
 
 app.get('/links/:id/clicks', async (c) => {
   const id = c.req.param('id');
+  const { clause, args } = dateRange(c);
   const rows = await c.env.DB.prepare(
-    'SELECT ts, country, city, region, referer FROM clicks WHERE link_id = ? ORDER BY ts DESC LIMIT 100',
+    `SELECT ts, country, city, region, referer FROM clicks WHERE link_id = ?${clause} ORDER BY ts DESC LIMIT 100`,
   )
-    .bind(id)
+    .bind(id, ...args)
     .all();
   return c.json({ clicks: rows.results });
 });
