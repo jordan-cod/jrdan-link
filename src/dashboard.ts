@@ -1,12 +1,14 @@
 import { Hono } from 'hono';
 
 import { registerQueueBoard } from '@/adapters/queue/bullmq/bullmq.board';
-import { BullmqClickQueue } from '@/adapters/queue/bullmq/bullmq.click.queue';
+import { BullmqQueue } from '@/adapters/queue/bullmq/bullmq.queue';
+import { CLICKS_QUEUE } from '@/domains/click/click.constants';
+import type { NewClick } from '@/domains/click/click.types';
 import { config } from '@/shared/config/config';
 import { logger } from '@/shared/logger/logger';
 
 const app = new Hono();
-const clickQueue = new BullmqClickQueue();
+const clickQueue = new BullmqQueue<NewClick>(CLICKS_QUEUE);
 
 registerQueueBoard(app, [clickQueue.queue], '/');
 
