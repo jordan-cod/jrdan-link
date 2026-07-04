@@ -1,5 +1,6 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 
+import { registerQueueBoard } from '@/adapters/queue/bullmq/bullmq.board';
 import { registerLinkRoutes } from '@/domains/link/link.routes';
 import { errorHandler } from '@/middlewares/error-handler.middleware';
 
@@ -47,6 +48,9 @@ export function buildApp(): OpenAPIHono {
 
   app.openapi(healthRoute, (c) => c.json({ status: 'ok' }, 200));
 
+  registerQueueBoard(app);
+
+  // Por último: registra o redirect catch-all /{id}.
   registerLinkRoutes(app);
 
   return app;

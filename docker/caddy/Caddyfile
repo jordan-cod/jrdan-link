@@ -16,7 +16,7 @@ http://app.localhost {
 		zone redirect {
 			match {
 				method GET
-				not path /healthz /docs /openapi.yaml
+				not path /healthz /docs /openapi.yaml /admin/*
 			}
 			key {remote_host}
 			events 100
