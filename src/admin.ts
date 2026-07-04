@@ -7,6 +7,20 @@ import { newShortId } from './shared/short-id';
 
 interface Env {
   LINKS: KVNamespace;
+  CF_ZONE_ID?: string;
+  CF_API_TOKEN?: string;
+}
+
+async function purgeEdgeCache(env: Env, id: string): Promise<void> {
+  if (!env.CF_ZONE_ID || !env.CF_API_TOKEN) return;
+  await fetch(`https://api.cloudflare.com/client/v4/zones/${env.CF_ZONE_ID}/purge_cache`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${env.CF_API_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ files: [shortUrl(id)] }),
+  });
 }
 
 const httpUrl = z.string().refine((value) => {
@@ -78,12 +92,15 @@ app.patch('/links/:id', zValidator('json', updateSchema), async (c) => {
     createdAt: existing.metadata?.createdAt ?? new Date().toISOString(),
   };
   await c.env.LINKS.put(id, url, { metadata });
+  await purgeEdgeCache(c.env, id);
 
   return c.json({ id, url, short_url: shortUrl(id) });
 });
 
 app.delete('/links/:id', async (c) => {
-  await c.env.LINKS.delete(c.req.param('id'));
+  const id = c.req.param('id');
+  await c.env.LINKS.delete(id);
+  await purgeEdgeCache(c.env, id);
   return c.body(null, 204);
 });
 
