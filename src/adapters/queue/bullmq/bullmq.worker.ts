@@ -5,7 +5,6 @@ import { logger } from '@/shared/logger/logger';
 
 const DEFAULT_CONCURRENCY = 10;
 
-// Transporte genérico: escuta uma queue e delega cada job pro handler de domínio.
 export function startWorker<TData>(
   queueName: string,
   handler: (data: TData) => Promise<void>,

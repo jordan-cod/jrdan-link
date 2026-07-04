@@ -137,7 +137,6 @@ export function registerLinkRoutes(app: OpenAPIHono) {
     return c.body(png.buffer as ArrayBuffer, 200, { 'Content-Type': 'image/png' });
   });
 
-  // Por último: /{id} é catch-all e não pode engolir /links.
   app.openapi(redirect, async (c) => {
     const link = await linkService.resolveLink(c.req.valid('param').id);
 

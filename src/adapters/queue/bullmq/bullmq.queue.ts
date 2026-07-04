@@ -10,7 +10,6 @@ const DEFAULT_JOB_OPTIONS = {
   backoff: { type: 'exponential' as const, delay: 1000 },
 };
 
-// Implementação genérica de fila sobre o BullMQ: uma instância por queue name.
 export class BullmqQueue<TName extends string, TData> implements Queue<TName, TData> {
   readonly queue: BullmqLibQueue;
 
