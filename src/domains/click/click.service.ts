@@ -2,20 +2,19 @@ import { isbot } from 'isbot';
 import { UAParser } from 'ua-parser-js';
 
 import type { Queue } from '@/adapters/queue/queue.interface';
-import { RECORD_CLICK_JOB } from '@/domains/click/click.constants';
 import type { IClickRepository } from '@/domains/click/click.repository.interface';
 import type { Device, NewClick, RecordClickInput } from '@/domains/click/click.types';
 
 export class ClickService {
   constructor(
-    private readonly clickQueue: Queue<NewClick>,
+    private readonly clickQueue: Queue<'record-click', NewClick>,
     private readonly clickRepository: IClickRepository,
   ) {}
 
   // Produtor: classifica o UA e enfileira o click (chamado no hot path do redirect).
   async recordClick(input: RecordClickInput): Promise<void> {
     const { device, isBot } = this.classify(input.userAgent ?? '');
-    await this.clickQueue.enqueue(RECORD_CLICK_JOB, {
+    await this.clickQueue.enqueue('record-click', {
       linkId: input.linkId,
       ts: new Date(),
       userAgent: input.userAgent,

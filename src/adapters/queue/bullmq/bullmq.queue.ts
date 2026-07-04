@@ -11,14 +11,14 @@ const DEFAULT_JOB_OPTIONS = {
 };
 
 // Implementação genérica de fila sobre o BullMQ: uma instância por queue name.
-export class BullmqQueue<TData> implements Queue<TData> {
+export class BullmqQueue<TName extends string, TData> implements Queue<TName, TData> {
   readonly queue: BullmqLibQueue;
 
   constructor(name: string) {
     this.queue = new BullmqLibQueue(name, { connection: redisConnection });
   }
 
-  async enqueue(jobName: string, data: TData): Promise<void> {
+  async enqueue(jobName: TName, data: TData): Promise<void> {
     await this.queue.add(jobName, data, DEFAULT_JOB_OPTIONS);
   }
 

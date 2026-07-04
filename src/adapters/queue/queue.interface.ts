@@ -1,3 +1,3 @@
-export interface Queue<TData = unknown> {
-  enqueue(jobName: string, data: TData): Promise<void>;
+export interface Queue<TName extends string, TData> {
+  enqueue(jobName: TName, data: TData): Promise<void>;
 }
