@@ -25,3 +25,7 @@ http://app.localhost {
 	}
 	reverse_proxy tracker:8080
 }
+
+http://redis.localhost {
+	reverse_proxy redisinsight:5540
+}

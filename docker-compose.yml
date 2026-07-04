@@ -55,6 +55,15 @@ services:
       redis:
         condition: service_healthy
 
+  redisinsight:
+    image: redis/redisinsight:latest
+    container_name: tracker-redisinsight
+    restart: unless-stopped
+    volumes:
+      - redisinsight_data:/data
+    depends_on:
+      - redis
+
   caddy:
     build:
       context: docker/caddy
@@ -68,10 +77,12 @@ services:
       - caddy_config:/config
     depends_on:
       - tracker
+      - redisinsight
 
 volumes:
   postgres_data:
   redis_data:
+  redisinsight_data:
   caddy_data:
   caddy_config:
   node_modules:
