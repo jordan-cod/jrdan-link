@@ -1,13 +1,13 @@
 import { client } from '@/adapters/database/postgresql/postgresql.client';
 import { startClickWorker } from '@/adapters/queue/bullmq/bullmq.click.worker';
 import { buildApp } from '@/app';
-import { clickQueue, clickRepository } from '@/container';
+import { clickQueue, clickService } from '@/container';
 import { config } from '@/shared/config/config';
 import { logger } from '@/shared/logger/logger';
 
 await client`SELECT 1`;
 
-const clickWorker = startClickWorker(clickRepository);
+const clickWorker = startClickWorker((click) => clickService.persistClick(click));
 
 const server = Bun.serve({
   port: config.PORT,

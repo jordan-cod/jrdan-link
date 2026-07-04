@@ -10,4 +10,4 @@ export const clickRepository = new PostgresqlClickRepository();
 export const clickQueue = new BullmqClickQueue();
 
 export const linkService = new LinkService(linkRepository);
-export const clickService = new ClickService(clickQueue);
+export const clickService = new ClickService(clickQueue, clickRepository);
