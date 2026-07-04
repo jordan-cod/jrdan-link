@@ -24,6 +24,17 @@ async function purgeEdgeCache(env: Env, id: string): Promise<void> {
   });
 }
 
+const ID_LENGTH = 5;
+const MAX_ID_ATTEMPTS = 5;
+
+async function generateUniqueId(kv: KVNamespace): Promise<string | null> {
+  for (let attempt = 0; attempt < MAX_ID_ATTEMPTS; attempt++) {
+    const id = newShortId(ID_LENGTH);
+    if ((await kv.get(id)) === null) return id;
+  }
+  return null;
+}
+
 const httpUrl = z.string().refine((value) => {
   try {
     const protocol = new URL(value).protocol;
@@ -56,10 +67,19 @@ app.use('*', async (c, next) => {
 
 app.post('/links', zValidator('json', createSchema), async (c) => {
   const { url, slug, expiresIn } = c.req.valid('json');
-  const id = slug ?? newShortId();
 
-  if (slug && (await c.env.LINKS.get(slug)) !== null) {
-    return c.json({ error: 'slug already taken' }, 409);
+  let id: string;
+  if (slug) {
+    if ((await c.env.LINKS.get(slug)) !== null) {
+      return c.json({ error: 'slug already taken' }, 409);
+    }
+    id = slug;
+  } else {
+    const generated = await generateUniqueId(c.env.LINKS);
+    if (generated === null) {
+      return c.json({ error: 'could not generate a unique id' }, 500);
+    }
+    id = generated;
   }
 
   const metadata: LinkMetadata = { url, createdAt: new Date().toISOString() };
