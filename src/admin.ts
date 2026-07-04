@@ -7,6 +7,7 @@ import { newShortId } from './shared/short-id';
 
 interface Env {
   LINKS: KVNamespace;
+  DB: D1Database;
   ADMIN_API_KEY: string;
   CF_ZONE_ID?: string;
   CF_API_TOKEN?: string;
@@ -129,8 +130,40 @@ app.patch('/links/:id', zValidator('json', updateSchema), async (c) => {
 app.delete('/links/:id', async (c) => {
   const id = c.req.param('id');
   await c.env.LINKS.delete(id);
+  await c.env.DB.prepare('DELETE FROM clicks WHERE link_id = ?').bind(id).run();
   await purgeEdgeCache(c.env, id);
   return c.body(null, 204);
+});
+
+app.get('/links/:id/stats', async (c) => {
+  const id = c.req.param('id');
+  const results = await c.env.DB.batch([
+    c.env.DB.prepare('SELECT count(*) AS clicks FROM clicks WHERE link_id = ?').bind(id),
+    c.env.DB.prepare(
+      "SELECT coalesce(country, '??') AS country, count(*) AS clicks FROM clicks WHERE link_id = ? GROUP BY country ORDER BY clicks DESC LIMIT 20",
+    ).bind(id),
+    c.env.DB.prepare(
+      "SELECT date(ts) AS day, count(*) AS clicks FROM clicks WHERE link_id = ? GROUP BY day ORDER BY day DESC LIMIT 30",
+    ).bind(id),
+  ]);
+
+  const total = (results[0]?.results[0] as { clicks: number } | undefined)?.clicks ?? 0;
+
+  return c.json({
+    total,
+    by_country: results[1]?.results ?? [],
+    by_day: results[2]?.results ?? [],
+  });
+});
+
+app.get('/links/:id/clicks', async (c) => {
+  const id = c.req.param('id');
+  const rows = await c.env.DB.prepare(
+    'SELECT ts, country, city, region, referer FROM clicks WHERE link_id = ? ORDER BY ts DESC LIMIT 100',
+  )
+    .bind(id)
+    .all();
+  return c.json({ clicks: rows.results });
 });
 
 export default app;
