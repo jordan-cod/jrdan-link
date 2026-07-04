@@ -2,7 +2,8 @@ interface Env {
   LINKS: KVNamespace;
 }
 
-const CACHE_TTL_SECONDS = 3600;
+const BROWSER_TTL_SECONDS = 60;
+const EDGE_TTL_SECONDS = 2_592_000;
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -23,7 +24,7 @@ export default {
       status: 302,
       headers: {
         Location: destination,
-        'Cache-Control': `public, max-age=${CACHE_TTL_SECONDS}`,
+        'Cache-Control': `public, max-age=${BROWSER_TTL_SECONDS}, s-maxage=${EDGE_TTL_SECONDS}`,
       },
     });
 
