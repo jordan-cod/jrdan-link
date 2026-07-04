@@ -1,11 +1,12 @@
 {
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "biomejs.biome",
+  "editor.codeActionsOnSave": {
+    "quickfix.biome": "explicit",
+    "source.organizeImports.biome": "explicit"
+  },
   "files.readonlyInclude": {
     "bun.lock": true
-  },
-  "editor.formatOnSave": true,
-  "typescript.tsdk": "node_modules/typescript/lib",
-  "files.exclude": {
-    "tmp": true
   },
   "search.exclude": {
     "bun.lock": true,

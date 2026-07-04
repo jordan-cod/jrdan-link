@@ -7,7 +7,10 @@
     "dev:admin": "wrangler dev --config wrangler.admin.jsonc",
     "deploy:redirect": "wrangler deploy --config wrangler.redirect.jsonc",
     "deploy:admin": "wrangler deploy --config wrangler.admin.jsonc",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "format": "biome format --write .",
+    "lint": "biome lint .",
+    "check": "biome check --write ."
   },
   "dependencies": {
     "@hono/zod-validator": "^0.4.2",
@@ -16,8 +19,12 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@biomejs/biome": "1.9.4",
     "@cloudflare/workers-types": "^4.20250109.0",
     "typescript": "^5.9.0",
     "wrangler": "^3.99.0"
-  }
+  },
+  "trustedDependencies": [
+    "@biomejs/biome"
+  ]
 }

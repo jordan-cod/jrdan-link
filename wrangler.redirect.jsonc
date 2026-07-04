@@ -3,6 +3,8 @@
   "main": "src/redirect.ts",
   "compatibility_date": "2025-01-01",
   "kv_namespaces": [{ "binding": "LINKS", "id": "9d149b17fa2346cd8763d3352209ba65" }],
-  "d1_databases": [{ "binding": "DB", "database_name": "jrdan-link-clicks", "database_id": "6fa72ffc-5569-4a5a-8c0e-80699e9277f5" }],
+  "d1_databases": [
+    { "binding": "DB", "database_name": "jrdan-link-clicks", "database_id": "6fa72ffc-5569-4a5a-8c0e-80699e9277f5" }
+  ],
   "routes": [{ "pattern": "jrdan.link", "custom_domain": true }]
 }

@@ -1,0 +1,5 @@
+# Secrets pro `wrangler dev` local (copie pra .dev.vars — não commitado).
+# Em produção, use `wrangler secret put <NOME> --config wrangler.admin.jsonc`.
+ADMIN_API_KEY=troque-por-uma-chave-forte
+CF_ZONE_ID=id-da-zona-jrdan.link
+CF_API_TOKEN=token-com-permissao-cache-purge

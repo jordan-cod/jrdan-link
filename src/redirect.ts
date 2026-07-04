@@ -1,25 +1,23 @@
 import { isbot } from 'isbot';
 
-interface Env {
-  LINKS: KVNamespace;
-  DB: D1Database;
-}
+import type { RedirectEnv } from './shared/env';
 
 const BROWSER_TTL_SECONDS = 60;
 const EDGE_TTL_SECONDS = 2_592_000;
 
-function recordClick(env: Env, ctx: ExecutionContext, id: string, request: Request): void {
+function recordClick(env: RedirectEnv, ctx: ExecutionContext, id: string, request: Request): void {
   const cf = request.cf;
   const userAgent = request.headers.get('user-agent');
+
   ctx.waitUntil(
     env.DB.prepare(
       'INSERT INTO clicks (link_id, country, city, region, referer, user_agent, is_bot) VALUES (?, ?, ?, ?, ?, ?, ?)',
     )
       .bind(
         id,
-        (cf?.country as string) ?? null,
-        (cf?.city as string) ?? null,
-        (cf?.region as string) ?? null,
+        cf?.country ?? null,
+        cf?.city ?? null,
+        cf?.region ?? null,
         request.headers.get('referer'),
         userAgent,
         isbot(userAgent) ? 1 : 0,
@@ -29,7 +27,7 @@ function recordClick(env: Env, ctx: ExecutionContext, id: string, request: Reque
 }
 
 export default {
-  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  async fetch(request, env, ctx): Promise<Response> {
     const url = new URL(request.url);
     const id = url.pathname.slice(1);
     if (!id) return new Response('Not found', { status: 404 });
@@ -59,4 +57,4 @@ export default {
     ctx.waitUntil(cache.put(cacheKey, response.clone()));
     return response;
   },
-} satisfies ExportedHandler<Env>;
+} satisfies ExportedHandler<RedirectEnv>;
