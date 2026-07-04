@@ -1,6 +1,6 @@
 import { isUniqueViolation } from '@/adapters/database/postgresql/postgresql.errors';
 
-import { LinkExceptions } from '@/domains/link/link.exceptions';
+import { linkNotFound, slugTaken } from '@/domains/link/link.exceptions';
 import type { ILinkRepository } from '@/domains/link/link.repository.interface';
 import type { CreateLinkInput, Link, LinkPatch, ListLinksInput, UpdateLinkInput } from '@/domains/link/link.types';
 import { newShortId } from '@/shared/crypto/short-id';
@@ -13,8 +13,8 @@ export class LinkService {
 
   async resolveLink(id: string): Promise<Link> {
     const link = await this.linkRepository.findActiveById(id);
-    if (!link) throw LinkExceptions.notFound();
-    if (link.expiresAt && link.expiresAt < new Date()) throw LinkExceptions.notFound();
+    if (!link) throw linkNotFound(id);
+    if (link.expiresAt && link.expiresAt < new Date()) throw linkNotFound(id);
     return link;
   }
 
@@ -23,7 +23,7 @@ export class LinkService {
       try {
         return await this.linkRepository.insert({ id: input.slug, url: input.url, expiresAt: input.expires_at });
       } catch (err) {
-        if (isUniqueViolation(err)) throw LinkExceptions.slugTaken();
+        if (isUniqueViolation(err)) throw slugTaken(input.slug);
         throw err;
       }
     }
@@ -46,12 +46,12 @@ export class LinkService {
 
     if (Object.keys(patch).length === 0) {
       const link = await this.linkRepository.findById(id);
-      if (!link) throw LinkExceptions.notFound();
+      if (!link) throw linkNotFound(id);
       return link;
     }
 
     const link = await this.linkRepository.update(id, patch);
-    if (!link) throw LinkExceptions.notFound();
+    if (!link) throw linkNotFound(id);
     return link;
   }
 

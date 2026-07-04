@@ -1,6 +1,5 @@
-import { ConflictError, NotFoundError } from '@/shared/error-handling/app-error';
+import createError from 'http-errors';
 
-export const LinkExceptions = {
-  notFound: () => new NotFoundError('link.not_found', 'link not found'),
-  slugTaken: () => new ConflictError('link.slug_taken', 'slug already taken'),
-};
+export const linkNotFound = (id: string) => createError.NotFound(`link "${id}" not found`);
+
+export const slugTaken = (slug: string) => createError.Conflict(`slug "${slug}" already taken`);

@@ -1,18 +1,15 @@
 import type { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
+import { isHttpError } from 'http-errors';
 
-import { AppError } from '@/shared/error-handling/app-error';
 import { logger } from '@/shared/logger/logger';
 
 export function errorHandler(err: Error, c: Context): Response {
-  if (err instanceof AppError) {
-    return c.json({ code: err.code, error: err.message }, err.statusCode);
-  }
-
-  if (err instanceof HTTPException) {
-    return err.getResponse();
+  if (isHttpError(err)) {
+    const message = err.expose ? err.message : 'Internal Server Error';
+    return c.json({ error: message }, err.status as ContentfulStatusCode);
   }
 
   logger.error({ err }, 'unhandled error');
-  return c.json({ code: 'internal_error', error: 'internal error' }, 500);
+  return c.json({ error: 'Internal Server Error' }, 500);
 }
