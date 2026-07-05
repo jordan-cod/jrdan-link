@@ -30,14 +30,17 @@ jobs:
     needs: [typecheck, lint]
     runs-on: ubuntu-latest
     environment: production
-    strategy:
-      matrix:
-        worker: [redirect, admin]
     steps:
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
-      - run: bunx wrangler deploy --config wrangler.${{ matrix.worker }}.jsonc
+      - name: Deploy workers (parallel)
+        run: |
+          bunx wrangler deploy --config wrangler.redirect.jsonc & pid_redirect=$!
+          bunx wrangler deploy --config wrangler.admin.jsonc & pid_admin=$!
+          wait $pid_redirect; status_redirect=$?
+          wait $pid_admin; status_admin=$?
+          exit $(( status_redirect > 0 ? status_redirect : status_admin ))
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
