@@ -1,6 +1,5 @@
 import { Hono } from 'hono';
 
-import { registerAnalyticsRoutes } from './admin/analytics';
 import { registerLinkRoutes } from './admin/links';
 import type { AdminEnv } from './shared/env';
 
@@ -15,6 +14,5 @@ app.use('*', async (c, next) => {
 });
 
 registerLinkRoutes(app);
-registerAnalyticsRoutes(app);
 
 export default app;

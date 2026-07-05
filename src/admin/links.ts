@@ -83,7 +83,6 @@ export function registerLinkRoutes(app: Hono<{ Bindings: AdminEnv }>): void {
   app.delete('/links/:id', async (c) => {
     const id = c.req.param('id');
     await c.env.LINKS.delete(id);
-    await c.env.DB.prepare('DELETE FROM clicks WHERE link_id = ?').bind(id).run();
     await purgeEdgeCache(c.env, id);
     return c.body(null, 204);
   });
