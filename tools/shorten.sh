@@ -18,7 +18,16 @@ key=$(security find-generic-password -a jrdan -s jrdan-admin-key -w 2>/dev/null)
   exit 1
 }
 
-url=$(pbpaste)
+# Fonte da URL: argumento, ou stdin (input do Shortcut), ou clipboard (terminal).
+if [[ -n "${1:-}" ]]; then
+  url="$1"
+elif [[ ! -t 0 ]]; then
+  url=$(cat)
+else
+  url=$(pbpaste)
+fi
+url=$(printf '%s' "$url" | tr -d '\r\n' | sed 's/^ *//;s/ *$//')
+
 if [[ ! "$url" =~ ^https?:// ]]; then
   notify 'Clipboard não tem uma URL http(s)'
   exit 1
