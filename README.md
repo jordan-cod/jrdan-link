@@ -85,6 +85,3 @@ bun run typecheck
 bun run check      # biome: lint + format
 ```
 
-## Licença
-
-MIT — veja [LICENSE](./LICENSE).
