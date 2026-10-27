@@ -1,6 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useRouteContext } from '@tanstack/react-router';
 import { api } from '../api';
+import { Card } from '../components/Card';
 import { LogoutIcon } from '../components/icons';
 import { Button } from '../components/ui';
 import { TokensSection } from './TokensSection';
@@ -17,14 +18,14 @@ export function SettingsPage() {
 	}
 
 	return (
-		<div className="mx-auto grid max-w-3xl gap-12">
-			<h1 className="text-2xl font-semibold tracking-tight">Configurações</h1>
+		<div className="mx-auto grid max-w-4xl gap-6">
+			<header>
+				<h1 className="text-[1.75rem] font-semibold tracking-tight">Configurações</h1>
+				<p className="mt-1 text-mute">Sua conta e os tokens de acesso dos scripts.</p>
+			</header>
 
-			<section aria-labelledby="account-title" className="grid gap-4">
-				<h2 id="account-title" className="text-lg font-semibold tracking-tight">
-					Conta
-				</h2>
-				<div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-rule bg-surface p-4">
+			<Card title="Conta">
+				<div className="flex flex-wrap items-center justify-between gap-4">
 					<div className="flex items-center gap-3">
 						<img
 							src={`https://github.com/${encodeURIComponent(me.login)}.png?size=96`}
@@ -43,7 +44,7 @@ export function SettingsPage() {
 						Sair
 					</Button>
 				</div>
-			</section>
+			</Card>
 
 			<TokensSection />
 		</div>

@@ -30,6 +30,8 @@ export interface StatsQuery {
 
 export interface Overview {
 	total: number;
+	previousTotal: number | null;
+	cities: number;
 	bots: number;
 	syncedAt: string | null;
 	series: { date: string; clicks: number }[];

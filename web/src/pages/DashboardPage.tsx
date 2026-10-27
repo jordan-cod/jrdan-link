@@ -7,7 +7,10 @@ export function DashboardPage() {
 
 	return (
 		<div className="grid gap-6">
-			<h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
+			<header>
+				<h1 className="text-[1.75rem] font-semibold tracking-tight">Dashboard</h1>
+				<p className="mt-1 text-mute">De onde vêm os cliques nos seus links.</p>
+			</header>
 			<StatsView
 				search={search}
 				onSearch={(patch: Partial<StatsSearch>) =>

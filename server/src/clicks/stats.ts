@@ -26,12 +26,20 @@ function dayKeys(from: Date, to: Date, offsetMinutes: number): string[] {
 	return keys;
 }
 
+function previousTotal(clicks: ClickRepository, filter: StatsFilter, now: Date): number | null {
+	if (!filter.since) return null;
+	const span = now.getTime() - filter.since.getTime();
+	return clicks.total({ ...filter, since: new Date(filter.since.getTime() - span), until: filter.since });
+}
+
 export function overview(clicks: ClickRepository, filter: StatsFilter, now = new Date()) {
 	const counts = new Map(clicks.byDay(filter).map((row) => [row.key, row.clicks]));
 	const first = filter.since ?? clicks.firstClick(filter) ?? now;
 
 	return {
 		total: clicks.total(filter),
+		previousTotal: previousTotal(clicks, filter, now),
+		cities: clicks.distinctCities(filter),
 		bots: clicks.total(filter, false),
 		series: dayKeys(first, now, filter.offsetMinutes).map((date) => ({ date, clicks: counts.get(date) ?? 0 })),
 		countries: clicks.groupBy(filter, 'country').map((row) => ({ code: row.key, clicks: row.clicks })),

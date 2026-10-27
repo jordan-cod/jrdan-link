@@ -3,6 +3,7 @@ import type { Click } from './click';
 
 export interface StatsFilter {
 	since: Date | null;
+	until?: Date | null;
 	slug: string | null;
 	offsetMinutes: number;
 }
@@ -98,6 +99,16 @@ export class ClickRepository {
 		return row?.clicks ?? 0;
 	}
 
+	distinctCities(filter: StatsFilter): number {
+		const { where, params } = this.scope(filter, "city != ''");
+		const row = this.db
+			.query<{ cities: number }, [Params]>(
+				`SELECT COUNT(DISTINCT country || '|' || region_code || '|' || city) AS cities FROM clicks ${where}`,
+			)
+			.get(params);
+		return row?.cities ?? 0;
+	}
+
 	byDay(filter: StatsFilter): Count[] {
 		const { where, params } = this.scope(filter);
 		return this.db
@@ -144,6 +155,10 @@ export class ClickRepository {
 		if (filter.since) {
 			conditions.push('at >= $since');
 			params.since = filter.since.toISOString();
+		}
+		if (filter.until) {
+			conditions.push('at < $until');
+			params.until = filter.until.toISOString();
 		}
 		if (filter.slug) {
 			conditions.push('slug = $slug');

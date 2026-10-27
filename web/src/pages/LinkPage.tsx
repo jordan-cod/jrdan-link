@@ -27,10 +27,10 @@ export function LinkPage() {
 				{isPending ? (
 					<p className="text-mute">Carregando…</p>
 				) : link ? (
-					<header className="flex flex-wrap items-start justify-between gap-4">
+					<header className="flex flex-wrap items-start justify-between gap-4 rounded-2xl border border-rule bg-surface p-5 shadow-card">
 						<div className="min-w-0">
 							<div className="flex items-center gap-1">
-								<h1 className="truncate text-2xl font-semibold tracking-tight">{shortLabel(link.shortUrl)}</h1>
+								<h1 className="truncate text-[1.75rem] font-semibold tracking-tight">{shortLabel(link.shortUrl)}</h1>
 								<CopyButton value={link.shortUrl} />
 							</div>
 							<a
@@ -44,10 +44,20 @@ export function LinkPage() {
 								<ExternalIcon width={14} height={14} className="shrink-0" />
 							</a>
 						</div>
-						<p className="text-sm text-mute">
-							Criado em {formatDate(link.createdAt)}
-							{link.expiresAt && `, expira em ${formatDate(link.expiresAt)}`}
-						</p>
+						<dl className="flex gap-6 text-sm">
+							<div>
+								<dt className="text-mute">Criado em</dt>
+								<dd className="mt-0.5 font-medium">{formatDate(link.createdAt)}</dd>
+							</div>
+							<div>
+								<dt className="text-mute">Expira</dt>
+								<dd className="mt-0.5 font-medium">{link.expiresAt ? formatDate(link.expiresAt) : 'Nunca'}</dd>
+							</div>
+							<div>
+								<dt className="text-mute">Cliques no total</dt>
+								<dd className="mt-0.5 font-medium tabular-nums">{link.clicks.toLocaleString('pt-BR')}</dd>
+							</div>
+						</dl>
 					</header>
 				) : (
 					<h1 className="text-2xl font-semibold tracking-tight">jrdan.link/{slug}</h1>

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
 import { type ApiToken, api } from '../api';
+import { Card } from '../components/Card';
 import { Button, CopyButton, ErrorText, Input } from '../components/ui';
 import { formatDate } from '../format';
 
@@ -25,12 +26,9 @@ export function TokensSection() {
 	}
 
 	return (
-		<div className="grid gap-10">
-			<section aria-labelledby="tokens-title">
-				<h2 id="tokens-title" className="text-lg font-semibold tracking-tight">
-					Tokens de acesso
-				</h2>
-				<p className="mt-2 max-w-prose text-mute">
+		<>
+			<Card title="Tokens de acesso">
+				<p className="max-w-prose text-mute">
 					Um token deixa um script criar links sem passar pelo login, como o atalho do Mac. Mande no header{' '}
 					<code className="rounded bg-wash px-1.5 py-0.5 text-[0.8125rem] text-ink">Authorization: Bearer</code>.
 				</p>
@@ -51,35 +49,44 @@ export function TokensSection() {
 				<ErrorText>{create.error?.message}</ErrorText>
 
 				{secret && (
-					<div role="status" className="mt-4 grid gap-2 rounded-lg border border-rule bg-surface p-4">
+					<div role="status" className="mt-4 grid gap-2 rounded-xl border border-ok/25 bg-ok/6 p-4">
 						<p className="text-sm">
 							<span className="font-medium">{secret.name}</span>
 							<span className="text-mute"> criado. Copie agora: ele não aparece de novo.</span>
 						</p>
-						<div className="flex items-center gap-2 rounded-md bg-wash py-1 pl-3 pr-1">
+						<div className="flex items-center gap-2 rounded-lg border border-rule bg-surface py-1 pr-1 pl-3">
 							<code className="min-w-0 flex-1 truncate text-[0.8125rem]">{secret.value}</code>
 							<CopyButton value={secret.value} />
 						</div>
 					</div>
 				)}
-			</section>
+			</Card>
 
-			<section aria-labelledby="active-title" className="grid gap-4">
-				<h3 id="active-title" className="font-medium">
-					Ativos
-				</h3>
-				{isPending && <p className="text-mute">Carregando…</p>}
+			<Card
+				title={
+					<span className="flex items-center gap-2">
+						Ativos
+						{tokens && (
+							<span className="rounded-md bg-wash px-1.5 py-0.5 text-xs font-medium text-mute tabular-nums">
+								{tokens.length}
+							</span>
+						)}
+					</span>
+				}
+				bodyClassName=""
+			>
+				{isPending && <p className="p-5 text-mute">Carregando…</p>}
 				<ErrorText>{error?.message}</ErrorText>
-				{tokens && tokens.length === 0 && <p className="text-mute">Nenhum token ativo.</p>}
+				{tokens && tokens.length === 0 && <p className="px-5 py-10 text-center text-mute">Nenhum token ativo.</p>}
 				{tokens && tokens.length > 0 && (
-					<ul className="divide-y divide-rule border-y border-rule">
+					<ul className="divide-y divide-rule">
 						{tokens.map((token) => (
 							<TokenRow key={token.id} token={token} />
 						))}
 					</ul>
 				)}
-			</section>
-		</div>
+			</Card>
+		</>
 	);
 }
 
@@ -92,7 +99,7 @@ function TokenRow({ token }: { token: ApiToken }) {
 	});
 
 	return (
-		<li className="flex flex-col gap-2 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+		<li className="flex flex-col gap-2 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
 			<div>
 				<p className="font-medium">{token.name}</p>
 				<p className="text-sm text-mute">

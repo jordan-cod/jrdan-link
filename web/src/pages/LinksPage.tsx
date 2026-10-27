@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link as RouterLink } from '@tanstack/react-router';
 import { type FormEvent, useMemo, useState } from 'react';
 import { api, type Link } from '../api';
+import { Card } from '../components/Card';
 import { Button, CopyButton, ErrorText, Input } from '../components/ui';
 import { displayUrl, formatDate, shortLabel } from '../format';
 
@@ -14,6 +15,35 @@ const EXPIRY_OPTIONS = [
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+function hostOf(url: string): string {
+	try {
+		return new URL(url).hostname;
+	} catch {
+		return '';
+	}
+}
+
+function Favicon({ url }: { url: string }) {
+	const host = hostOf(url);
+	const [failed, setFailed] = useState(false);
+	return (
+		<span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-xl border border-rule bg-surface shadow-card">
+			{host && !failed ? (
+				<img
+					src={`https://icons.duckduckgo.com/ip3/${host}.ico`}
+					alt=""
+					width={18}
+					height={18}
+					className="size-[18px]"
+					onError={() => setFailed(true)}
+				/>
+			) : (
+				<span className="text-sm font-semibold text-mute uppercase">{host.replace(/^www\./, '').charAt(0) || '?'}</span>
+			)}
+		</span>
+	);
+}
+
 export function LinksPage() {
 	const { data: links, isPending, error } = useQuery({ queryKey: ['links'], queryFn: api.links });
 	const [search, setSearch] = useState('');
@@ -25,46 +55,63 @@ export function LinksPage() {
 	}, [links, search]);
 
 	return (
-		<div className="mx-auto grid max-w-3xl gap-12">
+		<div className="mx-auto grid max-w-4xl gap-6">
+			<header>
+				<h1 className="text-[1.75rem] font-semibold tracking-tight">Links</h1>
+				<p className="mt-1 text-mute">Crie, edite e acompanhe os links curtos do jrdan.link.</p>
+			</header>
+
 			<CreateLink />
 
-			<section aria-labelledby="links-title" className="grid gap-4">
-				<div className="flex items-end justify-between gap-4">
-					<h2 id="links-title" className="font-medium">
-						Todos
-						{links && <span className="ml-2 font-normal text-mute tabular-nums">{links.length}</span>}
-					</h2>
-					{links && links.length > 0 && (
+			<Card
+				title={
+					<span className="flex items-center gap-2">
+						Todos os links
+						{links && (
+							<span className="rounded-md bg-wash px-1.5 py-0.5 text-xs font-medium text-mute tabular-nums">
+								{links.length}
+							</span>
+						)}
+					</span>
+				}
+				action={
+					links &&
+					links.length > 0 && (
 						<Input
 							type="search"
 							value={search}
 							onChange={(event) => setSearch(event.target.value)}
-							placeholder="Buscar"
+							placeholder="Buscar por código ou destino"
 							aria-label="Buscar links"
-							className="h-9 max-w-56"
+							className="h-9 max-w-64"
 						/>
-					)}
+					)
+				}
+				bodyClassName=""
+			>
+				{isPending && <p className="p-5 text-mute">Carregando…</p>}
+				<div className="px-5">
+					<ErrorText>{error?.message}</ErrorText>
 				</div>
 
-				{isPending && <p className="text-mute">Carregando…</p>}
-				<ErrorText>{error?.message}</ErrorText>
-
 				{links && links.length === 0 && (
-					<p className="rounded-lg border border-dashed border-rule px-4 py-8 text-center text-mute">
+					<p className="px-5 py-12 text-center text-mute">
 						Nenhum link ainda. Cole uma URL acima pra criar o primeiro.
 					</p>
 				)}
 
-				{links && links.length > 0 && visible.length === 0 && <p className="text-mute">Nenhum link com “{search}”.</p>}
+				{links && links.length > 0 && visible.length === 0 && (
+					<p className="px-5 py-12 text-center text-mute">Nenhum link com “{search}”.</p>
+				)}
 
 				{visible.length > 0 && (
-					<ul className="divide-y divide-rule border-y border-rule">
+					<ul className="divide-y divide-rule">
 						{visible.map((link) => (
 							<LinkRow key={link.slug} link={link} />
 						))}
 					</ul>
 				)}
-			</section>
+			</Card>
 		</div>
 	);
 }
@@ -102,13 +149,8 @@ function CreateLink() {
 	}
 
 	return (
-		<section aria-labelledby="create-title">
-			<h1 className="text-2xl font-semibold tracking-tight">Links</h1>
-			<h2 id="create-title" className="mt-8 font-medium">
-				Encurtar um link
-			</h2>
-
-			<form onSubmit={submit} className="mt-5 grid gap-3">
+		<Card title="Encurtar um link">
+			<form onSubmit={submit} className="grid gap-3">
 				<div className="flex flex-col gap-2 sm:flex-row">
 					<Input
 						type="url"
@@ -116,11 +158,11 @@ function CreateLink() {
 						autoFocus
 						value={url}
 						onChange={(event) => setUrl(event.target.value)}
-						placeholder="https://"
+						placeholder="Cole a URL de destino"
 						aria-label="URL de destino"
-						className="h-11 text-base"
+						className="h-12 rounded-xl text-base"
 					/>
-					<Button type="submit" variant="primary" className="h-11 px-5" disabled={create.isPending}>
+					<Button type="submit" variant="primary" className="h-12 rounded-xl px-6" disabled={create.isPending}>
 						{create.isPending ? 'Encurtando…' : 'Encurtar'}
 					</Button>
 				</div>
@@ -158,16 +200,16 @@ function CreateLink() {
 			{created && (
 				<div
 					role="status"
-					className="mt-4 flex items-center justify-between gap-3 rounded-lg border border-ok/25 bg-ok/6 py-2 pl-4 pr-2"
+					className="mt-4 flex items-center justify-between gap-3 rounded-xl border border-ok/25 bg-ok/6 py-2 pr-2 pl-4"
 				>
 					<p className="min-w-0 truncate">
-						<span className="font-medium">{shortLabel(created.link.shortUrl)}</span>
+						<span className="font-semibold">{shortLabel(created.link.shortUrl)}</span>
 						<span className="text-mute">{created.copied ? ' criado e copiado.' : ' criado.'}</span>
 					</p>
 					<CopyButton value={created.link.shortUrl} />
 				</div>
 			)}
-		</section>
+		</Card>
 	);
 }
 
@@ -191,7 +233,7 @@ function LinkRow({ link }: { link: Link }) {
 
 	if (editing) {
 		return (
-			<li className="py-4">
+			<li className="px-5 py-4">
 				<form
 					className="grid gap-2"
 					onSubmit={(event) => {
@@ -199,7 +241,7 @@ function LinkRow({ link }: { link: Link }) {
 						update.mutate(draft);
 					}}
 				>
-					<p className="font-medium">{shortLabel(link.shortUrl)}</p>
+					<p className="font-semibold">{shortLabel(link.shortUrl)}</p>
 					<div className="flex flex-col gap-2 sm:flex-row">
 						<Input
 							type="url"
@@ -232,37 +274,41 @@ function LinkRow({ link }: { link: Link }) {
 	}
 
 	return (
-		<li className="group grid gap-1 py-3.5 sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4">
-			<div className="min-w-0">
-				<div className="flex items-center gap-1">
-					<RouterLink
-						to="/links/$slug"
-						params={{ slug: link.slug }}
-						search={{ range: '30d' }}
-						className="truncate font-medium decoration-rule underline-offset-4 hover:text-accent hover:underline"
-					>
-						{shortLabel(link.shortUrl)}
-					</RouterLink>
-					<CopyButton value={link.shortUrl} />
+		<li className="group flex flex-col gap-3 px-5 py-4 transition-colors hover:bg-paper/60 sm:flex-row sm:items-center">
+			<div className="flex min-w-0 flex-1 items-center gap-3.5">
+				<Favicon url={link.url} />
+				<div className="min-w-0">
+					<div className="flex items-center gap-1">
+						<RouterLink
+							to="/links/$slug"
+							params={{ slug: link.slug }}
+							search={{ range: '30d' }}
+							className="truncate font-semibold decoration-rule underline-offset-4 hover:text-accent hover:underline"
+						>
+							{shortLabel(link.shortUrl)}
+						</RouterLink>
+						<CopyButton value={link.shortUrl} />
+					</div>
+					<p className="truncate text-sm text-mute" title={link.url}>
+						{displayUrl(link.url)}
+					</p>
 				</div>
-				<p className="truncate text-sm text-mute" title={link.url}>
-					{displayUrl(link.url)}
-				</p>
 			</div>
 
-			<div className="flex items-center gap-3 text-sm sm:justify-end">
+			<div className="flex items-center gap-4 text-sm sm:justify-end">
 				<RouterLink
 					to="/links/$slug"
 					params={{ slug: link.slug }}
 					search={{ range: '30d' }}
-					className="tabular-nums text-ink decoration-rule underline-offset-4 hover:text-accent hover:underline"
+					className="flex flex-col items-end leading-tight transition-colors hover:text-accent"
 				>
-					{link.clicks === 1 ? '1 clique' : `${link.clicks.toLocaleString('pt-BR')} cliques`}
+					<span className="text-base font-semibold tabular-nums">{link.clicks.toLocaleString('pt-BR')}</span>
+					<span className="text-xs text-mute">{link.clicks === 1 ? 'clique' : 'cliques'}</span>
 				</RouterLink>
-				<span className="text-mute tabular-nums">
+				<span className="hidden w-24 text-right text-mute tabular-nums md:block">
 					{link.expiresAt ? `expira ${formatDate(link.expiresAt)}` : formatDate(link.createdAt)}
 				</span>
-				<div className="flex items-center gap-1">
+				<div className="flex items-center gap-0.5">
 					{confirming ? (
 						<>
 							<Button
@@ -289,11 +335,7 @@ function LinkRow({ link }: { link: Link }) {
 					)}
 				</div>
 			</div>
-			{remove.error && (
-				<div className="sm:col-span-2">
-					<ErrorText>{remove.error.message}</ErrorText>
-				</div>
-			)}
+			{remove.error && <ErrorText>{remove.error.message}</ErrorText>}
 		</li>
 	);
 }

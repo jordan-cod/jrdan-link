@@ -7,9 +7,9 @@ import { clicksLabel, EMPTY_FILL, formatNumber, RAMP } from '../stats/scale';
 const WIDTH = 960;
 const HEIGHT = 440;
 const PAD = 20;
-const PAPER = '#f5f6f7';
+const PAPER = '#ffffff';
 const INK = '#15171a';
-const CONTEXT_FILL = '#e9ecf0';
+const CONTEXT_FILL = '#e6ebf1';
 
 export type ProjectionKind = 'world' | 'usa' | 'local';
 
@@ -195,7 +195,7 @@ export function ClickMap({
 	const height = container.current?.clientHeight ?? 0;
 
 	return (
-		<div ref={container} className="relative overflow-hidden rounded-xl border border-rule bg-surface">
+		<div ref={container} className="relative overflow-hidden bg-ocean">
 			<svg
 				key={viewKey}
 				viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
@@ -262,7 +262,7 @@ export function ClickMap({
 						fontWeight={600}
 						letterSpacing="0.02em"
 						fill={INK}
-						stroke={PAPER}
+						stroke="#ffffff"
 						strokeWidth={3}
 						strokeOpacity={0.9}
 						paintOrder="stroke"
@@ -316,7 +316,7 @@ export function ClickMap({
 
 			{tip && pointer && (
 				<div
-					className="pointer-events-none absolute z-10 min-w-36 rounded-lg border border-rule bg-surface px-3 py-2 shadow-[0_8px_24px_-8px_rgb(0_0_0/0.2)]"
+					className="pointer-events-none absolute z-10 min-w-36 rounded-lg border border-rule bg-surface px-3 py-2 shadow-float"
 					style={{
 						left: pointer.x,
 						top: pointer.y,

@@ -5,15 +5,18 @@
 
 @theme {
 	--font-sans: "Schibsted Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
-	--color-paper: #f5f6f7;
+	--color-paper: #f3f5f8;
 	--color-surface: #ffffff;
-	--color-ink: #15171a;
-	--color-mute: #686d75;
-	--color-rule: #dfe2e6;
-	--color-wash: #eceef1;
-	--color-accent: #2447d6;
+	--color-ink: #0f1729;
+	--color-mute: #667085;
+	--color-rule: #e4e7ec;
+	--color-wash: #eef1f5;
+	--color-ocean: #eef3f9;
+	--color-accent: #2a5bd7;
 	--color-danger: #c4321f;
 	--color-ok: #1f7a4d;
+	--shadow-card: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.05);
+	--shadow-float: 0 12px 32px -12px rgb(16 24 40 / 0.28);
 }
 
 @layer base {
@@ -26,6 +29,7 @@
 		@apply bg-paper text-ink font-sans antialiased;
 		font-size: 0.9375rem;
 		line-height: 1.55;
+		font-feature-settings: "ss01";
 	}
 
 	:focus-visible {

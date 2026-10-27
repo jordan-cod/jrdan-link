@@ -380,3 +380,28 @@ describe('clicks', () => {
 		expect(list.links[0]).toMatchObject({ slug: 'cv', clicks: 2 });
 	});
 });
+
+describe('period comparison', () => {
+	test('reports the total of the previous period of the same length', async () => {
+		const day = 24 * 60 * 60 * 1000;
+		ctx.source.clicks.push(
+			click(),
+			click(),
+			click({ at: new Date(Date.now() - 10 * day) }),
+			click({ at: new Date(Date.now() - 40 * day) }),
+		);
+		await ctx.sync.run();
+		const week = (await (await ctx.call('/api/stats?range=7d', { headers: ctx.withToken })).json()) as {
+			total: number;
+			previousTotal: number | null;
+			cities: number;
+		};
+		expect(week.total).toBe(2);
+		expect(week.previousTotal).toBe(1);
+		expect(week.cities).toBe(1);
+		const all = (await (await ctx.call('/api/stats?range=all', { headers: ctx.withToken })).json()) as {
+			previousTotal: number | null;
+		};
+		expect(all.previousTotal).toBeNull();
+	});
+});

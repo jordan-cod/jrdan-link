@@ -1,17 +1,26 @@
 import { type PointerEvent, useEffect, useRef, useState } from 'react';
-import { clicksLabel, formatNumber, LINE_STROKE } from '../stats/scale';
+import { clicksLabel, formatNumber, RAMP } from '../stats/scale';
 
-const HEIGHT = 180;
-const PAD = { top: 12, right: 8, bottom: 24, left: 36 };
+const HEIGHT = 220;
+const PAD = { top: 16, right: 4, bottom: 26, left: 34 };
+const GAP = 2;
 
 const dayFormat = new Intl.DateTimeFormat('pt-BR', { day: 'numeric', month: 'short', timeZone: 'UTC' });
-const dayLabel = (iso: string) => dayFormat.format(new Date(`${iso}T00:00:00Z`)).replace('.', '');
+const weekdayFormat = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', timeZone: 'UTC' });
+const asDate = (iso: string) => new Date(`${iso}T00:00:00Z`);
+const dayLabel = (iso: string) => dayFormat.format(asDate(iso)).replace('.', '');
 
 function niceMax(value: number): number {
 	if (value <= 4) return 4;
 	const magnitude = 10 ** Math.floor(Math.log10(value));
 	const step = [1, 2, 2.5, 5, 10].find((s) => s * magnitude * 4 >= value) ?? 10;
 	return step * magnitude * 4;
+}
+
+function columnPath(x: number, y: number, width: number, height: number): string {
+	if (height <= 0) return '';
+	const r = Math.min(4, width / 2, height);
+	return `M${x},${y + height}V${y + r}Q${x},${y} ${x + r},${y}H${x + width - r}Q${x + width},${y} ${x + width},${y + r}V${y + height}Z`;
 }
 
 export function DailyChart({ series }: { series: { date: string; clicks: number }[] }) {
@@ -30,19 +39,17 @@ export function DailyChart({ series }: { series: { date: string; clicks: number 
 	const max = niceMax(Math.max(0, ...series.map((point) => point.clicks)));
 	const plotWidth = Math.max(1, width - PAD.left - PAD.right);
 	const plotHeight = HEIGHT - PAD.top - PAD.bottom;
-	const x = (i: number) => PAD.left + (series.length <= 1 ? plotWidth / 2 : (i / (series.length - 1)) * plotWidth);
+	const slot = plotWidth / Math.max(1, series.length);
+	const barWidth = Math.max(2, Math.min(28, slot - GAP));
+	const x = (i: number) => PAD.left + i * slot + (slot - barWidth) / 2;
 	const y = (value: number) => PAD.top + plotHeight - (value / max) * plotHeight;
-
-	const line = series
-		.map((point, i) => `${i === 0 ? 'M' : 'L'}${x(i).toFixed(1)},${y(point.clicks).toFixed(1)}`)
-		.join('');
-	const ticks = [0, max / 2, max];
-	const labelIndexes = [...new Set([0, Math.floor((series.length - 1) / 2), series.length - 1])].filter((i) => i >= 0);
+	const ticks = [0, max / 4, max / 2, (3 * max) / 4, max];
+	const labelEvery = Math.max(1, Math.ceil(series.length / Math.max(2, Math.floor(plotWidth / 70))));
 
 	function track(event: PointerEvent<SVGRectElement>) {
 		const rect = event.currentTarget.getBoundingClientRect();
-		const ratio = (event.clientX - rect.left) / rect.width;
-		setActive(Math.max(0, Math.min(series.length - 1, Math.round(ratio * (series.length - 1)))));
+		const index = Math.floor(((event.clientX - rect.left) / rect.width) * series.length);
+		setActive(Math.max(0, Math.min(series.length - 1, index)));
 	}
 
 	const point = active !== null ? series[active] : undefined;
@@ -52,40 +59,40 @@ export function DailyChart({ series }: { series: { date: string; clicks: number 
 			<svg width={width} height={HEIGHT} className="block" role="img" aria-label="Cliques por dia">
 				{ticks.map((tick) => (
 					<g key={tick}>
-						<line x1={PAD.left} x2={width - PAD.right} y1={y(tick)} y2={y(tick)} stroke="#e6e8eb" />
-						<text x={PAD.left - 8} y={y(tick)} textAnchor="end" dominantBaseline="central" fontSize={11} fill="#686d75">
+						<line x1={PAD.left} x2={width - PAD.right} y1={y(tick)} y2={y(tick)} stroke="#eef1f5" />
+						<text
+							x={PAD.left - 10}
+							y={y(tick)}
+							textAnchor="end"
+							dominantBaseline="central"
+							fontSize={11}
+							fill="#667085"
+						>
 							{formatNumber(tick)}
 						</text>
 					</g>
 				))}
-				{labelIndexes.map((i) => {
-					const day = series[i];
-					return day ? (
+				{series.map((day, i) => (
+					<path
+						key={day.date}
+						d={columnPath(x(i), y(day.clicks), barWidth, PAD.top + plotHeight - y(day.clicks))}
+						fill={active === i ? RAMP[3] : RAMP[1]}
+						className="transition-[fill] duration-100"
+					/>
+				))}
+				{series.map((day, i) =>
+					i % labelEvery === 0 ? (
 						<text
 							key={day.date}
-							x={x(i)}
+							x={x(i) + barWidth / 2}
 							y={HEIGHT - 6}
-							textAnchor={i === 0 ? 'start' : i === series.length - 1 ? 'end' : 'middle'}
+							textAnchor="middle"
 							fontSize={11}
-							fill="#686d75"
+							fill="#667085"
 						>
 							{dayLabel(day.date)}
 						</text>
-					) : null;
-				})}
-				<path d={line} fill="none" stroke={LINE_STROKE} strokeWidth={2} strokeLinejoin="round" strokeLinecap="round" />
-				{point && active !== null && (
-					<g pointerEvents="none">
-						<line
-							x1={x(active)}
-							x2={x(active)}
-							y1={PAD.top}
-							y2={PAD.top + plotHeight}
-							stroke="#15171a"
-							strokeOpacity={0.25}
-						/>
-						<circle cx={x(active)} cy={y(point.clicks)} r={4.5} fill={LINE_STROKE} stroke="#ffffff" strokeWidth={2} />
-					</g>
+					) : null,
 				)}
 				<rect
 					x={PAD.left}
@@ -99,14 +106,16 @@ export function DailyChart({ series }: { series: { date: string; clicks: number 
 			</svg>
 			{point && active !== null && (
 				<div
-					className="pointer-events-none absolute top-0 rounded-md border border-rule bg-surface px-2.5 py-1.5 shadow-[0_4px_16px_rgb(0_0_0/0.08)]"
+					className="pointer-events-none absolute top-0 z-10 rounded-lg border border-rule bg-surface px-3 py-2 shadow-float"
 					style={{
-						left: x(active),
-						transform: `translateX(${x(active) > width / 2 ? 'calc(-100% - 10px)' : '10px'})`,
+						left: x(active) + barWidth / 2,
+						transform: `translateX(${x(active) > width / 2 ? 'calc(-100% - 12px)' : '12px'})`,
 					}}
 				>
-					<p className="text-sm font-semibold tabular-nums">{clicksLabel(point.clicks)}</p>
-					<p className="text-xs text-mute">{dayLabel(point.date)}</p>
+					<p className="text-base font-semibold tabular-nums">{clicksLabel(point.clicks)}</p>
+					<p className="text-sm text-mute">
+						{weekdayFormat.format(asDate(point.date))}, {dayLabel(point.date)}
+					</p>
 				</div>
 			)}
 		</div>

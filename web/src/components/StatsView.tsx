@@ -1,11 +1,14 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { type ReactNode, useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { api, type Range } from '../api';
 import { loadRegions, loadWorld, regionCodeOf } from '../stats/geo';
 import { colorScale, countryName, deviceName, formatNumber, referrerName } from '../stats/scale';
 import { type BarItem, BarList } from './BarList';
+import { Card } from './Card';
 import { ClickMap, type MapArea, MapLegend, type MapPoint, type ProjectionKind } from './ClickMap';
 import { DailyChart } from './DailyChart';
+import { Sparkline } from './Sparkline';
+import { Delta, StatCard } from './StatCard';
 import { ErrorText } from './ui';
 
 export interface StatsSearch {
@@ -210,20 +213,21 @@ export function StatsView({ search, onSearch, scoped = false }: StatsViewProps) 
 
 	const topLink = data?.links[0];
 	const topReferrer = data?.referrers[0];
+	const period = RANGES.find((range) => range.value === search.range)?.label ?? '';
 
 	return (
-		<div className="grid gap-8">
+		<div className="grid gap-6">
 			<div className="flex flex-wrap items-center justify-between gap-3">
 				<fieldset className="m-0 flex flex-wrap items-center gap-2 border-0 p-0">
 					<legend className="sr-only">Filtros</legend>
-					<div className="flex rounded-lg border border-rule bg-surface p-0.5">
+					<div className="flex rounded-xl border border-rule bg-surface p-1 shadow-card">
 						{RANGES.map((range) => (
 							<button
 								key={range.value}
 								type="button"
 								aria-pressed={search.range === range.value}
 								onClick={() => onSearch({ range: range.value })}
-								className="rounded-md px-3 py-1.5 text-sm text-mute transition-colors hover:text-ink aria-pressed:bg-wash aria-pressed:font-medium aria-pressed:text-ink"
+								className="rounded-lg px-3 py-1.5 text-sm font-medium text-mute transition-colors hover:text-ink aria-pressed:bg-ink aria-pressed:text-paper"
 							>
 								{range.label}
 							</button>
@@ -234,7 +238,7 @@ export function StatsView({ search, onSearch, scoped = false }: StatsViewProps) 
 							value={search.slug ?? ''}
 							onChange={(event) => onSearch({ slug: event.target.value || undefined })}
 							aria-label="Link"
-							className="h-9 rounded-lg border border-rule bg-surface px-2.5 text-sm text-ink focus:border-ink/40 focus:outline-none"
+							className="h-10 rounded-xl border border-rule bg-surface px-3 text-sm font-medium text-ink shadow-card focus:border-ink/40 focus:outline-none"
 						>
 							<option value="">Todos os links</option>
 							{links?.map((link) => (
@@ -245,81 +249,117 @@ export function StatsView({ search, onSearch, scoped = false }: StatsViewProps) 
 						</select>
 					)}
 				</fieldset>
-				<p className="text-sm text-mute">{syncedLabel(data?.syncedAt)}</p>
+				<p className="flex items-center gap-2 text-sm text-mute">
+					<span className="size-2 rounded-full bg-ok" aria-hidden="true" />
+					{syncedLabel(data?.syncedAt)}
+				</p>
 			</div>
 
 			<ErrorText>{overview.error?.message}</ErrorText>
 
-			<dl className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3">
-				<Stat label="Cliques" value={data ? formatNumber(data.total) : '–'} />
-				<Stat label="Países" value={data ? formatNumber(data.countries.filter((c) => c.code).length) : '–'} />
+			<div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+				<StatCard
+					label="Cliques"
+					value={data ? formatNumber(data.total) : '–'}
+					detail={data && <Delta current={data.total} previous={data.previousTotal} period={period} />}
+					visual={data && <Sparkline values={data.series.map((day) => day.clicks)} width={96} height={30} />}
+				/>
+				<StatCard
+					label="Países"
+					value={data ? formatNumber(data.countries.filter((c) => c.code).length) : '–'}
+					detail={data?.countries[0]?.code ? `Mais cliques: ${countryName(data.countries[0].code)}` : undefined}
+				/>
+				<StatCard
+					label="Cidades"
+					value={data ? formatNumber(data.cities) : '–'}
+					detail={data ? `${formatNumber(data.bots)} robôs ignorados` : undefined}
+				/>
 				{scoped ? (
-					<Stat
+					<StatCard
 						label="Origem principal"
 						value={topReferrer ? referrerName(topReferrer.host) : '–'}
 						detail={topReferrer ? `${formatNumber(topReferrer.clicks)} cliques` : undefined}
 					/>
 				) : (
-					<Stat
+					<StatCard
 						label="Link mais clicado"
 						value={topLink ? `/${topLink.slug}` : '–'}
 						detail={topLink ? `${formatNumber(topLink.clicks)} cliques` : undefined}
 					/>
 				)}
-			</dl>
+			</div>
 
-			<section aria-labelledby="map-title" className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_17rem]">
-				<div className="grid min-w-0 gap-3">
-					<div className="flex items-center gap-1.5 text-sm">
+			<Card
+				title={
+					<div className="flex min-w-0 items-center gap-1.5">
 						{view.crumbs.map((crumb) => (
 							<span key={crumb.label} className="flex items-center gap-1.5">
 								<button
 									type="button"
 									onClick={() => go(crumb.country, crumb.region)}
-									className="text-mute transition-colors hover:text-ink"
+									className="font-medium text-mute transition-colors hover:text-ink"
 								>
 									{crumb.label}
 								</button>
-								<span className="text-mute/50">/</span>
+								<span className="font-normal text-mute/50">/</span>
 							</span>
 						))}
-						<h2 id="map-title" className="font-medium">
-							{view.here}
-						</h2>
+						<h2 className="truncate">{view.here}</h2>
 					</div>
-					<ClickMap
-						viewKey={view.key}
-						projection={view.projection}
-						areas={view.areas}
-						context={view.context}
-						focus={view.focus}
-						points={view.points}
-						total={view.total}
-						color={view.color}
-						hovered={hovered}
-						onHover={setHovered}
-						onBack={view.onBack}
-						dimmed={overview.isFetching || detail.isFetching}
-					/>
-					{view.scale && <MapLegend classes={view.scale.classes} />}
+				}
+				action={
+					view.scale ? (
+						<MapLegend classes={view.scale.classes} />
+					) : (
+						<p className="text-xs text-mute">Tamanho = cliques</p>
+					)
+				}
+				bodyClassName="grid lg:grid-cols-[minmax(0,1fr)_19rem]"
+			>
+				<div className="flex min-w-0 items-center overflow-hidden bg-ocean lg:rounded-bl-2xl">
+					<div className="w-full">
+						<ClickMap
+							viewKey={view.key}
+							projection={view.projection}
+							areas={view.areas}
+							context={view.context}
+							focus={view.focus}
+							points={view.points}
+							total={view.total}
+							color={view.color}
+							hovered={hovered}
+							onHover={setHovered}
+							onBack={view.onBack}
+							dimmed={overview.isFetching || detail.isFetching}
+						/>
+					</div>
 				</div>
-				<div className="min-w-0">
-					<h3 className="mb-2 text-sm font-medium">{view.rankingTitle}</h3>
-					<BarList items={view.ranking} hovered={hovered} onHover={setHovered} />
+				<div className="min-w-0 border-t border-rule p-3 lg:border-t-0 lg:border-l">
+					<div className="flex items-baseline justify-between px-2.5 pt-1 pb-2">
+						<h3 className="text-sm font-semibold">{view.rankingTitle}</h3>
+						<span className="text-xs text-mute tabular-nums">{formatNumber(view.ranking.length)}</span>
+					</div>
+					<div className="max-h-[22rem] overflow-y-auto">
+						<BarList items={view.ranking} hovered={hovered} onHover={setHovered} ranked />
+					</div>
 				</div>
-			</section>
+			</Card>
 
-			<section aria-labelledby="daily-title" className="grid gap-3">
-				<h2 id="daily-title" className="font-medium">
-					Cliques por dia
-				</h2>
+			<Card
+				title="Cliques por dia"
+				action={
+					data && <span className="text-sm text-mute">{`${formatNumber(data.total)} nos últimos ${period}`}</span>
+				}
+			>
 				{data && <DailyChart series={data.series} />}
-			</section>
+			</Card>
 
-			<div className={`grid gap-8 ${scoped ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
+			<div className={`grid gap-4 ${scoped ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
 				{!scoped && (
-					<Panel title="Links">
+					<Card title="Links" bodyClassName="p-2.5">
 						<BarList
+							ranked
+							limit={8}
 							items={(data?.links ?? []).map((link) => ({
 								key: link.slug,
 								label: `/${link.slug}`,
@@ -327,49 +367,25 @@ export function StatsView({ search, onSearch, scoped = false }: StatsViewProps) 
 								onSelect: () => onSearch({ slug: search.slug === link.slug ? undefined : link.slug }),
 							}))}
 						/>
-					</Panel>
+					</Card>
 				)}
-				<Panel title="Origem">
+				<Card title="Origem" bodyClassName="p-2.5">
 					<BarList
+						ranked
+						limit={8}
 						items={(data?.referrers ?? []).map((r) => ({
 							key: r.host || 'direct',
 							label: referrerName(r.host),
 							clicks: r.clicks,
 						}))}
 					/>
-				</Panel>
-				<Panel title="Dispositivo">
+				</Card>
+				<Card title="Dispositivo" bodyClassName="p-2.5">
 					<BarList
 						items={(data?.devices ?? []).map((d) => ({ key: d.device, label: deviceName(d.device), clicks: d.clicks }))}
 					/>
-				</Panel>
+				</Card>
 			</div>
-
-			{data && data.bots > 0 && (
-				<p className="text-sm text-mute">
-					{formatNumber(data.bots)} {data.bots === 1 ? 'acesso de robô ficou' : 'acessos de robôs ficaram'} de fora da
-					contagem, como prévias de link no WhatsApp e no LinkedIn.
-				</p>
-			)}
 		</div>
-	);
-}
-
-function Stat({ label, value, detail }: { label: string; value: string; detail?: string }) {
-	return (
-		<div className="min-w-0">
-			<dt className="text-sm text-mute">{label}</dt>
-			<dd className="mt-1 truncate text-3xl font-semibold tracking-tight">{value}</dd>
-			{detail && <dd className="text-sm text-mute">{detail}</dd>}
-		</div>
-	);
-}
-
-function Panel({ title, children }: { title: string; children: ReactNode }) {
-	return (
-		<section className="min-w-0">
-			<h2 className="mb-2 font-medium">{title}</h2>
-			{children}
-		</section>
 	);
 }
