@@ -49,6 +49,13 @@ A API precisa de um token com **Workers KV Storage: Edit** na conta e **Cache Pu
 
 ## Deploy
 
+```bash
+tools/deploy.sh
+```
+
+Faz o build da imagem pra `linux/amd64`, manda pra VPS por SSH, sobe o container, publica o worker do
+redirect e espera o `/health` responder. Precisa da chave `~/.ssh/jrdan-link-deploy` e do `wrangler login`.
+
 O workflow `Deploy` roda checks em todo PR. No `main`, ele publica o worker do redirect e uma imagem
 em `ghcr.io/jordan-cod/jrdan-link/app`, e sobe o container na VPS quando `DEPLOY_ENABLED=true`.
 
@@ -67,10 +74,10 @@ Secrets do repositório: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `DEPLO
 
 ### Primeira subida
 
-Os links que já estavam no KV entram no SQLite com:
+Os links que já estavam no KV entram no SQLite com, dentro de `~/jrdan-link` na VPS:
 
 ```bash
-docker compose exec app bun run import:kv
+docker compose --env-file .env.image exec app bun run import:kv
 ```
 
 ## Atalho do Mac
