@@ -1,0 +1,44 @@
+@import "tailwindcss";
+@import "@fontsource-variable/schibsted-grotesk";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+	--font-sans: "Schibsted Grotesk Variable", ui-sans-serif, system-ui, sans-serif;
+	--color-paper: #f5f6f7;
+	--color-surface: #ffffff;
+	--color-ink: #15171a;
+	--color-mute: #686d75;
+	--color-rule: #dfe2e6;
+	--color-wash: #eceef1;
+	--color-accent: #2447d6;
+	--color-danger: #c4321f;
+	--color-ok: #1f7a4d;
+}
+
+@layer base {
+	html {
+		color-scheme: light;
+		-webkit-text-size-adjust: 100%;
+	}
+
+	body {
+		@apply bg-paper text-ink font-sans antialiased;
+		font-size: 0.9375rem;
+		line-height: 1.55;
+	}
+
+	:focus-visible {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 2px;
+	}
+
+	button,
+	[role="button"] {
+		cursor: pointer;
+	}
+
+	button:disabled {
+		cursor: default;
+	}
+}

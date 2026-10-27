@@ -1,0 +1,27 @@
+services:
+  app:
+    image: ${APP_IMAGE}
+    env_file: .env
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+    restart: unless-stopped
+    expose:
+      - "3000"
+    volumes:
+      - data:/data
+    networks:
+      proxy:
+        aliases:
+          - shortener
+
+volumes:
+  data:
+
+networks:
+  proxy:
+    external: true
