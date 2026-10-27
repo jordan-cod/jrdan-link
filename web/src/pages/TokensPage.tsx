@@ -25,7 +25,7 @@ export function TokensPage() {
 	}
 
 	return (
-		<div className="grid gap-12">
+		<div className="mx-auto grid max-w-3xl gap-12">
 			<section aria-labelledby="tokens-title">
 				<h1 id="tokens-title" className="text-2xl font-semibold tracking-tight">
 					Tokens de acesso

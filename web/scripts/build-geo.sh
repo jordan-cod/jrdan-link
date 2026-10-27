@@ -24,7 +24,7 @@ $MAPSHAPER -i "$SRC/ne_50m_admin_0_countries.geojson" \
 rm -f "$OUT"/admin1/*.json
 $MAPSHAPER -i "$SRC/ne_10m_admin_1_states_provinces.geojson" \
   -filter '/^[A-Z]{2}$/.test(iso_a2)' \
-  -each 'cc = iso_a2, id = iso_3166_2, name = name_pt || name' \
+  -each 'cc = iso_a2, id = iso_3166_2, name = ["BR", "PT", "AO", "MZ", "CV", "GW", "ST", "TL"].includes(iso_a2) ? name : name_pt || name' \
   -filter-fields cc,id,name \
   -simplify 4% keep-shapes \
   -split cc \

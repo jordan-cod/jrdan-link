@@ -17,7 +17,7 @@ export function AppLayout() {
 	}
 
 	return (
-		<div className="mx-auto min-h-screen max-w-3xl px-5 pb-24">
+		<div className="mx-auto min-h-screen max-w-6xl px-5 pb-24">
 			<header className="flex items-center justify-between gap-4 py-6">
 				<div className="flex items-center gap-6">
 					<Link to="/" className="text-[0.9375rem] font-semibold tracking-tight">
@@ -26,6 +26,9 @@ export function AppLayout() {
 					<nav className="flex items-center gap-1" aria-label="Seções">
 						<Link to="/" className={navClass} activeOptions={{ exact: true }}>
 							Links
+						</Link>
+						<Link to="/stats" search={{ range: '30d' }} className={navClass}>
+							Cliques
 						</Link>
 						<Link to="/tokens" className={navClass}>
 							Tokens

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link as RouterLink } from '@tanstack/react-router';
 import { type FormEvent, useMemo, useState } from 'react';
 import { api, type Link } from '../api';
 import { Button, CopyButton, ErrorText, Input } from '../components/ui';
@@ -24,7 +25,7 @@ export function LinksPage() {
 	}, [links, search]);
 
 	return (
-		<div className="grid gap-12">
+		<div className="mx-auto grid max-w-3xl gap-12">
 			<CreateLink />
 
 			<section aria-labelledby="links-title" className="grid gap-4">
@@ -249,6 +250,13 @@ function LinkRow({ link }: { link: Link }) {
 			</div>
 
 			<div className="flex items-center gap-3 text-sm sm:justify-end">
+				<RouterLink
+					to="/stats"
+					search={{ range: '30d', slug: link.slug }}
+					className="tabular-nums text-ink decoration-rule underline-offset-4 hover:text-accent hover:underline"
+				>
+					{link.clicks === 1 ? '1 clique' : `${link.clicks.toLocaleString('pt-BR')} cliques`}
+				</RouterLink>
 				<span className="text-mute tabular-nums">
 					{link.expiresAt ? `expira ${formatDate(link.expiresAt)}` : formatDate(link.createdAt)}
 				</span>
