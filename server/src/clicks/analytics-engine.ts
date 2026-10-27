@@ -9,7 +9,7 @@ interface AnalyticsEngineOptions {
 
 interface Row {
 	id: string;
-	at: string;
+	timestamp: string;
 	slug: string;
 	country: string;
 	region_code: string;
@@ -36,7 +36,7 @@ export class AnalyticsEngineSource implements ClickSource {
 
 	async since(from: Date, limit: number): Promise<Click[]> {
 		const query = `
-			SELECT blob8 AS id, timestamp AS at, blob1 AS slug, blob2 AS country, blob3 AS region_code,
+			SELECT blob8 AS id, timestamp, blob1 AS slug, blob2 AS country, blob3 AS region_code,
 				blob4 AS region, blob5 AS city, blob6 AS referrer, blob7 AS device,
 				double1 AS latitude, double2 AS longitude, _sample_interval AS weight
 			FROM ${this.options.dataset}
@@ -60,7 +60,7 @@ export class AnalyticsEngineSource implements ClickSource {
 			.map((row) => ({
 				id: row.id,
 				slug: row.slug,
-				at: new Date(`${row.at.replace(' ', 'T')}Z`),
+				at: new Date(`${row.timestamp.replace(' ', 'T')}Z`),
 				country: row.country,
 				regionCode: row.region_code,
 				region: row.region,
