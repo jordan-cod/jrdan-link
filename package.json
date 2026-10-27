@@ -1,27 +1,22 @@
 {
-  "name": "jrdan-link",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev:redirect": "wrangler dev --config wrangler.redirect.jsonc",
-    "dev:admin": "wrangler dev --config wrangler.admin.jsonc",
-    "deploy:redirect": "wrangler deploy --config wrangler.redirect.jsonc",
-    "deploy:admin": "wrangler deploy --config wrangler.admin.jsonc",
-    "typecheck": "tsc --noEmit",
-    "format": "biome format --write .",
-    "lint": "biome lint .",
-    "check": "biome check --write ."
-  },
-  "dependencies": {
-    "@hono/zod-validator": "^0.4.2",
-    "hono": "^4.9.0",
-    "zod": "^3.24.1"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "1.9.4",
-    "@cloudflare/workers-types": "^4.20250109.0",
-    "typescript": "^5.9.0",
-    "wrangler": "^3.99.0"
-  },
-  "trustedDependencies": ["@biomejs/biome"]
+	"name": "jrdan-link",
+	"private": true,
+	"type": "module",
+	"workspaces": [
+		"redirect",
+		"server",
+		"web"
+	],
+	"scripts": {
+		"dev": "bun run --filter '@jrdan-link/server' dev & bun run --filter '@jrdan-link/web' dev",
+		"build": "bun run --filter '@jrdan-link/web' build",
+		"typecheck": "bun run --filter '*' typecheck",
+		"test": "bun run --filter '@jrdan-link/server' test",
+		"check": "biome check --write .",
+		"ci": "biome ci ."
+	},
+	"devDependencies": {
+		"@biomejs/biome": "2.6.3",
+		"typescript": "5.9.3"
+	}
 }

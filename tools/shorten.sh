@@ -1,24 +1,16 @@
 #!/usr/bin/env bash
-#
-# Lê uma URL do clipboard, cria um link curto em jrdan.link e devolve o
-# link curto no clipboard (+ notificação). Pensado pra rodar via um atalho
-# global do macOS (Shortcuts.app → Run Shell Script).
-#
-# A API key fica no Keychain:
-#   security add-generic-password -a jrdan -s jrdan-admin-key -w '<sua-key>' -U
 
 set -euo pipefail
 
-API='https://app.jrdan.link/links'
+API="${JRDAN_LINK_API:-https://shortener.jrdan.dev}/api/links"
 
 notify() { osascript -e "display notification \"$1\" with title \"jrdan.link\""; }
 
-key=$(security find-generic-password -a jrdan -s jrdan-admin-key -w 2>/dev/null) || {
-  notify 'API key não encontrada no Keychain'
+token=$(security find-generic-password -a jrdan -s jrdan-link-token -w 2>/dev/null) || {
+  notify 'Token não encontrado no Keychain'
   exit 1
 }
 
-# Fonte da URL: argumento, ou stdin (input do Shortcut), ou clipboard (terminal).
 if [[ -n "${1:-}" ]]; then
   url="$1"
 elif [[ ! -t 0 ]]; then
@@ -29,16 +21,17 @@ fi
 url=$(printf '%s' "$url" | tr -d '\r\n' | sed 's/^ *//;s/ *$//')
 
 if [[ ! "$url" =~ ^https?:// ]]; then
-  notify 'Clipboard não tem uma URL http(s)'
+  notify 'Não tem uma URL http(s) pra encurtar'
   exit 1
 fi
 
 body=$(printf '%s' "$url" | python3 -c 'import json,sys; print(json.dumps({"url": sys.stdin.read().strip()}))')
-resp=$(curl -s -X POST "$API" -H "Authorization: Bearer $key" -H 'Content-Type: application/json' -d "$body")
-short=$(printf '%s' "$resp" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("short_url",""))' 2>/dev/null || true)
+resp=$(curl -s -X POST "$API" -H "Authorization: Bearer $token" -H 'Content-Type: application/json' -d "$body")
+short=$(printf '%s' "$resp" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("shortUrl",""))' 2>/dev/null || true)
 
 if [[ -z "$short" ]]; then
-  notify 'Falhou ao criar o link'
+  error=$(printf '%s' "$resp" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("error",""))' 2>/dev/null || true)
+  notify "Falhou: ${error:-sem resposta}"
   exit 1
 fi
 

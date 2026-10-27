@@ -1,87 +1,85 @@
 # jrdan.link
 
-Encurtador de URLs pessoal na **Cloudflare Workers**. Redirect no edge (cache + KV),
-admin protegido por API key. Roda no **free tier** — custo ~$0.
-
-## Arquitetura
+Encurtador de URLs pessoal. O redirect roda na edge da Cloudflare; o painel e a API rodam na VPS.
 
 ```
-jrdan.link/{id}    → Worker redirect  → Cache API (edge) → KV → 302
-app.jrdan.link     → Worker admin     → CRUD (API key)   → KV
+jrdan.link/{slug}        Worker redirect ─▶ cache da edge ─▶ KV ─▶ 302
+shortener.jrdan.dev      Painel + API (Bun) ─▶ SQLite (fonte da verdade)
+                                     └──▶ KV + purge do cache, a cada mudança
 ```
 
-- **redirect** (`src/redirect.ts`): serve o 302 do cache do edge; no miss lê o KV e cacheia.
-- **admin** (`src/admin.ts`): CRUD dos links, exige `Authorization: Bearer`, purga o cache no edit/delete.
-
-Storage: **KV** (`LINKS`), `id → url` (valor) + metadata `{ url, createdAt }`.
+O redirect não depende da VPS: se ela cair, os links continuam funcionando. A API grava no SQLite e
+publica no KV na mesma operação; se a Cloudflare recusar, a mudança é desfeita e o painel avisa.
 
 ## Estrutura
 
-```
-src/
-├── redirect.ts          # Worker do redirect (jrdan.link)
-├── admin.ts             # Worker do admin (app.jrdan.link) — auth + monta rotas
-├── admin/
-│   └── links.ts         # rotas de CRUD dos links
-└── shared/
-    ├── env.ts           # tipos dos bindings
-    ├── link.ts          # LinkMetadata + shortUrl
-    ├── schemas.ts       # validação (zod)
-    ├── cache.ts         # purge do cache de edge
-    └── short-id.ts      # gerador de id
-```
+| Pasta | O quê |
+|---|---|
+| `redirect/` | Worker do `jrdan.link`. Lê o KV, cacheia na edge respeitando a expiração do link. |
+| `server/` | API e servidor do painel. Elysia, `bun:sqlite`, login com GitHub, tokens pessoais. |
+| `web/` | Painel. React, Vite, TanStack Router e Query, Tailwind. |
+| `tools/shorten.sh` | Atalho do Mac: encurta a URL do clipboard e copia o link curto. |
 
-## Setup
+## Desenvolvimento
 
 ```bash
 bun install
-bunx wrangler login
-
-# KV (copie o id gerado pros wrangler.*.jsonc)
-bunx wrangler kv namespace create LINKS
-
-# secrets do admin
-bunx wrangler secret put ADMIN_API_KEY --config wrangler.admin.jsonc
-bunx wrangler secret put CF_API_TOKEN  --config wrangler.admin.jsonc  # permissão Cache Purge
+cp .env.example server/.env   # preencha; PUBLIC_URL=http://localhost:5173 pro dev
+bun run dev                    # API em :3000, painel em :5173 com proxy pra API
 ```
 
-`BASE_URL` e `CF_ZONE_ID` ficam em `vars` no `wrangler.admin.jsonc`. Pra `wrangler dev` local,
-copie `.dev.vars.example` → `.dev.vars`.
+```bash
+bun run check       # biome
+bun run typecheck
+bun run test
+```
+
+## Login
+
+Só a conta em `GITHUB_ALLOWED_LOGIN` entra. Crie um OAuth App em
+<https://github.com/settings/developers> com callback `https://shortener.jrdan.dev/auth/github/callback`.
+
+Scripts usam tokens criados em **Tokens**, no header `Authorization: Bearer jl_...`. Tokens não
+conseguem criar nem revogar outros tokens.
+
+## Cloudflare
+
+A API precisa de um token com **Workers KV Storage: Edit** na conta e **Cache Purge** na zona
+`jrdan.link`. Account, namespace e zone ids vão no `.env`.
 
 ## Deploy
 
-```bash
-bun run deploy:redirect   # jrdan.link
-bun run deploy:admin      # app.jrdan.link
+O workflow `Deploy` roda checks em todo PR. No `main`, ele publica o worker do redirect e uma imagem
+em `ghcr.io/jordan-cod/jrdan-link/app`, e sobe o container na VPS quando `DEPLOY_ENABLED=true`.
+
+Na VPS, a pasta do projeto (`DEPLOY_PATH`) tem o `docker-compose.prod.yml` como `docker-compose.yml`
+e o `.env` de produção. O Caddy compartilhado aponta o domínio pro container:
+
+```caddyfile
+shortener.jrdan.dev {
+	encode zstd gzip
+	reverse_proxy shortener:3000
+}
 ```
 
-## Uso
+Secrets do repositório: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, `DEPLOY_HOST`, `DEPLOY_USER`,
+`DEPLOY_SSH_KEY`, `DEPLOY_PATH`. Variáveis: `DEPLOY_ENABLED`, `PANEL_HOST`.
+
+### Primeira subida
+
+Os links que já estavam no KV entram no SQLite com:
 
 ```bash
-KEY=<ADMIN_API_KEY>
-
-# criar (slug 3-32 chars e expiresIn em segundos são opcionais)
-curl -X POST https://app.jrdan.link/links \
-  -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
-  -d '{"url":"https://github.com","slug":"gh"}'
-
-curl https://app.jrdan.link/links              -H "Authorization: Bearer $KEY"   # listar
-curl -X PATCH  https://app.jrdan.link/links/gh -H "Authorization: Bearer $KEY" \
-  -H "Content-Type: application/json" -d '{"url":"https://novo.com"}'            # editar
-curl -X DELETE https://app.jrdan.link/links/gh -H "Authorization: Bearer $KEY"  # apagar
-
-curl -I https://jrdan.link/gh   # usar o link
+docker compose exec app bun run import:kv
 ```
 
-## Notas operacionais
+## Atalho do Mac
 
-- **Cache**: edge 30 dias (`s-maxage`), navegador 60s (`max-age`); edit/delete purgam o edge na hora.
-- **KV é eventualmente consistente**: `GET /links` (list) demora ~30-60s pra refletir escritas; o redirect (`get`) vê na hora.
-
-## Scripts
+Gere um token no painel e guarde no Keychain:
 
 ```bash
-bun run typecheck
-bun run check      # biome: lint + format
+security add-generic-password -a jrdan -s jrdan-link-token -w 'jl_...' -U
 ```
 
+No Shortcuts.app, crie um atalho com **Run Shell Script** apontando pra `tools/shorten.sh` e
+atribua um atalho de teclado. Ele lê a URL do argumento, do input do atalho ou do clipboard.

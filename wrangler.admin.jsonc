@@ -1,8 +1,0 @@
-{
-  "name": "jrdan-link-admin",
-  "main": "src/admin.ts",
-  "compatibility_date": "2025-01-01",
-  "kv_namespaces": [{ "binding": "LINKS", "id": "9d149b17fa2346cd8763d3352209ba65" }],
-  "vars": { "BASE_URL": "https://jrdan.link", "CF_ZONE_ID": "65ac4c24bb0df92126fff4d861d54c84" },
-  "routes": [{ "pattern": "app.jrdan.link", "custom_domain": true }]
-}
