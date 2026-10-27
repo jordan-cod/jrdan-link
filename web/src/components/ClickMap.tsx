@@ -1,36 +1,48 @@
-import { useQuery } from '@tanstack/react-query';
-import { geoNaturalEarth1, geoPath } from 'd3-geo';
-import type { MultiPolygon, Polygon } from 'geojson';
+import { type GeoProjection, geoAlbersUsa, geoMercator, geoNaturalEarth1, geoPath } from 'd3-geo';
+import type { Feature, FeatureCollection, Geometry, MultiPolygon, Polygon } from 'geojson';
 import { type KeyboardEvent, type PointerEvent, useMemo, useRef, useState } from 'react';
-import type { CountryDetail } from '../api';
-import { loadRegions, loadWorld, type PlaceFeature, regionCodeOf } from '../stats/geo';
-import { clicksLabel, colorScale, countryName, EMPTY_FILL, formatNumber, RAMP } from '../stats/scale';
+import type { PlaceFeature } from '../stats/geo';
+import { clicksLabel, EMPTY_FILL, formatNumber, RAMP } from '../stats/scale';
 
 const WIDTH = 960;
-const HEIGHT = 421;
-const MAX_ZOOM = 60;
+const HEIGHT = 440;
+const PAD = 20;
 const PAPER = '#f5f6f7';
 const INK = '#15171a';
-const FOCUS_FILL = '#d6e2f2';
+const CONTEXT_FILL = '#e9ecf0';
 
-export interface Selection {
-	country: string | null;
-	region: string | null;
+export type ProjectionKind = 'world' | 'usa' | 'local';
+
+export interface MapArea {
+	key: string;
+	name: string;
+	label?: string;
+	clicks: number;
+	feature: PlaceFeature;
+	onSelect?: () => void;
+}
+
+export interface MapPoint {
+	key: string;
+	name: string;
+	clicks: number;
+	longitude: number;
+	latitude: number;
 }
 
 interface ClickMapProps {
-	countries: { code: string; clicks: number }[];
-	detail: CountryDetail | undefined;
-	selection: Selection;
-	onSelect: (selection: Selection) => void;
+	viewKey: string;
+	projection: ProjectionKind;
+	areas: MapArea[];
+	context?: PlaceFeature[];
+	focus?: PlaceFeature;
+	points?: MapPoint[];
+	total: number;
+	color: (clicks: number) => string;
+	hovered: string | null;
+	onHover: (key: string | null) => void;
+	onBack?: () => void;
 	dimmed?: boolean;
-}
-
-interface Tip {
-	x: number;
-	y: number;
-	title: string;
-	clicks: number;
 }
 
 const LAND_EXTENT = {
@@ -42,30 +54,39 @@ const LAND_EXTENT = {
 	]),
 };
 
-const projection = geoNaturalEarth1().fitExtent(
-	[
-		[6, 6],
-		[WIDTH - 6, HEIGHT - 6],
-	],
-	LAND_EXTENT,
-);
-const path = geoPath(projection);
+const EXTENT: [[number, number], [number, number]] = [
+	[PAD, PAD],
+	[WIDTH - PAD, HEIGHT - PAD],
+];
 
-function mainlandBounds(feature: PlaceFeature): [[number, number], [number, number]] {
-	const geometry = feature.geometry;
-	if (geometry.type !== 'MultiPolygon') return path.bounds(feature);
+function mainland(feature: PlaceFeature): Feature<Geometry> {
+	if (feature.geometry.type !== 'MultiPolygon') return feature;
+	const area = geoPath(geoMercator());
+	const parts = (feature.geometry as MultiPolygon).coordinates.map((coordinates) => ({
+		coordinates,
+		size: area.area({ type: 'Polygon', coordinates } as Polygon),
+	}));
+	const largest = Math.max(...parts.map((part) => part.size));
+	return {
+		type: 'Feature',
+		properties: {},
+		geometry: {
+			type: 'MultiPolygon',
+			coordinates: parts.filter((part) => part.size >= largest * 0.2).map((part) => part.coordinates),
+		},
+	};
+}
 
-	const parts = (geometry as MultiPolygon).coordinates.map((coordinates) => {
-		const polygon: Polygon = { type: 'Polygon', coordinates };
-		return { area: path.area(polygon), bounds: path.bounds(polygon) };
-	});
-	const largest = Math.max(...parts.map((part) => part.area));
-	const kept = parts.filter((part) => part.area >= largest * 0.2);
+function buildProjection(kind: ProjectionKind, areas: MapArea[], focus?: PlaceFeature): GeoProjection {
+	if (kind === 'world') return geoNaturalEarth1().fitExtent(EXTENT, LAND_EXTENT);
 
-	return [
-		[Math.min(...kept.map((p) => p.bounds[0][0])), Math.min(...kept.map((p) => p.bounds[0][1]))],
-		[Math.max(...kept.map((p) => p.bounds[1][0])), Math.max(...kept.map((p) => p.bounds[1][1]))],
-	];
+	const target: FeatureCollection = {
+		type: 'FeatureCollection',
+		features: focus ? [mainland(focus)] : areas.map((area) => area.feature),
+	};
+
+	if (kind === 'usa') return geoAlbersUsa().fitExtent(EXTENT, target) as unknown as GeoProjection;
+	return geoMercator().fitExtent(EXTENT, target);
 }
 
 function onActivate(action: () => void) {
@@ -76,97 +97,111 @@ function onActivate(action: () => void) {
 	};
 }
 
-function zoomTo(bounds: [[number, number], [number, number]] | null) {
-	if (!bounds) return { k: 1, x: 0, y: 0 };
-	const [[x0, y0], [x1, y1]] = bounds;
-	const k = Math.min(MAX_ZOOM, 0.86 / Math.max((x1 - x0) / WIDTH, (y1 - y0) / HEIGHT));
-	return { k, x: WIDTH / 2 - (k * (x0 + x1)) / 2, y: HEIGHT / 2 - (k * (y0 + y1)) / 2 };
-}
+const percent = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 });
+const share = (clicks: number, total: number) => `${percent.format((clicks / total) * 100)}% do total`;
 
-export function ClickMap({ countries, detail, selection, onSelect, dimmed = false }: ClickMapProps) {
+export function ClickMap({
+	viewKey,
+	projection: kind,
+	areas,
+	context = [],
+	focus,
+	points = [],
+	total,
+	color,
+	hovered,
+	onHover,
+	onBack,
+	dimmed = false,
+}: ClickMapProps) {
 	const container = useRef<HTMLDivElement>(null);
-	const [tip, setTip] = useState<Tip | null>(null);
-	const [hovered, setHovered] = useState<string | null>(null);
+	const [pointer, setPointer] = useState<{ x: number; y: number } | null>(null);
 
-	const { data: world = [] } = useQuery({ queryKey: ['geo', 'world'], queryFn: loadWorld, staleTime: Infinity });
-	const { data: regions } = useQuery({
-		queryKey: ['geo', 'admin1', selection.country],
-		queryFn: () => loadRegions(selection.country ?? ''),
-		enabled: Boolean(selection.country),
-		staleTime: Infinity,
-	});
+	const projection = useMemo(() => buildProjection(kind, areas, focus), [kind, areas, focus]);
+	const path = useMemo(() => geoPath(projection), [projection]);
 
-	const countryClicks = useMemo(() => new Map(countries.map((c) => [c.code, c.clicks])), [countries]);
-	const regionClicks = useMemo(() => new Map((detail?.regions ?? []).map((r) => [r.code, r.clicks])), [detail]);
+	const shapes = useMemo(
+		() => areas.map((area) => ({ ...area, d: path(area.feature) ?? '', size: path.area(area.feature) })),
+		[areas, path],
+	);
 
-	const worldScale = useMemo(() => colorScale(countries.map((c) => c.clicks)), [countries]);
-	const regionScale = useMemo(() => colorScale((detail?.regions ?? []).map((r) => r.clicks)), [detail]);
+	const contextPaths = useMemo(
+		() => context.map((feature) => ({ id: feature.properties.id, d: path(feature) ?? '' })),
+		[context, path],
+	);
 
-	const countryFeature = world.find((f) => f.properties.id === selection.country);
-	const regionFeature = regions?.find((f) => regionCodeOf(f) === selection.region);
-	const hasRegions = Boolean(selection.country && regions && regions.length > 0);
+	const labels = useMemo(
+		() =>
+			shapes
+				.filter((shape) => shape.label && shape.clicks > 0 && shape.size > 900)
+				.map((shape) => {
+					const [x, y] = path.centroid(shape.feature);
+					return { key: shape.key, text: shape.label ?? '', x, y };
+				})
+				.filter((label) => Number.isFinite(label.x) && Number.isFinite(label.y)),
+		[shapes, path],
+	);
 
-	const zoom = useMemo(() => {
-		if (regionFeature) return zoomTo(mainlandBounds(regionFeature));
-		if (countryFeature) return zoomTo(mainlandBounds(countryFeature));
-		return zoomTo(null);
-	}, [regionFeature, countryFeature]);
-
-	const cities = useMemo(() => {
-		if (!detail || !selection.country) return [];
-		if (hasRegions && !selection.region) return [];
-		return detail.cities
-			.filter((city) => city.latitude !== null && city.longitude !== null)
-			.filter((city) => !selection.region || city.regionCode === selection.region)
-			.map((city) => {
-				const point = projection([city.longitude ?? 0, city.latitude ?? 0]);
-				return point ? { ...city, x: point[0], y: point[1] } : null;
+	const dots = useMemo(() => {
+		const max = Math.max(1, ...points.map((point) => point.clicks));
+		const placed = points
+			.map((point) => {
+				const xy = projection([point.longitude, point.latitude]);
+				return xy ? { ...point, x: xy[0], y: xy[1], r: 5 + 13 * Math.sqrt(point.clicks / max) } : null;
 			})
-			.filter((city) => city !== null);
-	}, [detail, selection, hasRegions]);
+			.filter((point) => point !== null)
+			.sort((a, b) => b.clicks - a.clicks);
 
-	const maxCity = Math.max(1, ...cities.map((city) => city.clicks));
-	const scale = selection.country ? regionScale : worldScale;
+		const boxes: { x0: number; x1: number; y0: number; y1: number }[] = [];
+		return placed.map((point, index) => {
+			const box = {
+				x0: point.x + point.r + 4,
+				x1: point.x + point.r + 6 + point.name.length * 6.6,
+				y0: point.y - 8,
+				y1: point.y + 8,
+			};
+			const free =
+				index < 8 &&
+				box.x1 < WIDTH &&
+				boxes.every((other) => box.x1 < other.x0 || box.x0 > other.x1 || box.y1 < other.y0 || box.y0 > other.y1);
+			if (free) boxes.push(box);
+			return { ...point, showLabel: free };
+		});
+	}, [points, projection]);
 
-	function showTip(event: PointerEvent, title: string, clicks: number, id: string) {
+	const lookup = useMemo(() => {
+		const map = new Map<string, { name: string; clicks: number }>();
+		for (const shape of shapes) map.set(shape.key, shape);
+		for (const dot of dots) map.set(dot.key, dot);
+		return map;
+	}, [shapes, dots]);
+
+	const hoveredShape = shapes.find((shape) => shape.key === hovered);
+	const tip = hovered ? lookup.get(hovered) : undefined;
+	const focusing = Boolean(hovered && lookup.has(hovered));
+
+	function track(event: PointerEvent, key: string) {
 		const box = container.current?.getBoundingClientRect();
-		if (!box) return;
-		setHovered(id);
-		setTip({ x: event.clientX - box.left, y: event.clientY - box.top, title, clicks });
+		if (box) setPointer({ x: event.clientX - box.left, y: event.clientY - box.top });
+		if (key !== hovered) onHover(key);
 	}
 
-	function zoomOut() {
-		if (selection.region) onSelect({ country: selection.country, region: null });
-		else if (selection.country) onSelect({ country: null, region: null });
+	function leave() {
+		setPointer(null);
+		onHover(null);
 	}
 
-	function hideTip() {
-		setHovered(null);
-		setTip(null);
-	}
-
-	const regionLabels = useMemo(() => {
-		if (!regions || selection.region) return [];
-		return regions
-			.map((feature) => ({
-				feature,
-				code: regionCodeOf(feature),
-				clicks: regionClicks.get(regionCodeOf(feature)) ?? 0,
-			}))
-			.filter((entry) => entry.clicks > 0)
-			.map((entry) => {
-				const [x, y] = path.centroid(entry.feature);
-				return { ...entry, x, y };
-			});
-	}, [regions, regionClicks, selection.region]);
+	const width = container.current?.clientWidth ?? 0;
+	const height = container.current?.clientHeight ?? 0;
 
 	return (
-		<div ref={container} className="relative">
+		<div ref={container} className="relative overflow-hidden rounded-xl border border-rule bg-surface">
 			<svg
+				key={viewKey}
 				viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-				className={`block h-auto w-full transition-opacity duration-200 ${dimmed ? 'opacity-60' : ''}`}
+				className={`map-enter block h-auto w-full transition-opacity duration-200 ${dimmed ? 'opacity-60' : ''}`}
 				role="group"
-				aria-label="Mapa de cliques por local"
+				aria-label="Mapa de cliques"
 			>
 				<rect
 					width={WIDTH}
@@ -175,149 +210,134 @@ export function ClickMap({ countries, detail, selection, onSelect, dimmed = fals
 					role="button"
 					tabIndex={-1}
 					aria-label="Voltar um nível"
-					onClick={zoomOut}
-					onKeyDown={onActivate(zoomOut)}
+					onClick={onBack}
+					onKeyDown={onBack ? onActivate(onBack) : undefined}
+					className={onBack ? 'cursor-zoom-out' : undefined}
 				/>
-				<g
-					style={{
-						transform: `translate(${zoom.x}px, ${zoom.y}px) scale(${zoom.k})`,
-						transformOrigin: '0 0',
-						transition: 'transform 700ms cubic-bezier(0.2, 0.8, 0.2, 1)',
-					}}
-				>
-					{world.map((feature) => {
-						const code = feature.properties.id;
-						const clicks = countryClicks.get(code) ?? 0;
-						const selected = code === selection.country;
-						const fill = selection.country
-							? selected && !hasRegions
-								? regionScale.color(detail?.total ?? clicks)
-								: '#eceef1'
-							: worldScale.color(clicks);
 
-						const name = countryName(code, feature.properties.name);
-						const open = () => code && !selected && onSelect({ country: code, region: null });
-						return (
-							<path
-								key={code || feature.properties.name}
-								role="button"
-								tabIndex={code && clicks > 0 && !selection.country ? 0 : -1}
-								aria-label={`${name}: ${clicksLabel(clicks)}`}
-								onKeyDown={onActivate(open)}
-								d={path(feature) ?? undefined}
-								fill={fill}
-								stroke={hovered === `c:${code}` ? INK : PAPER}
-								strokeWidth={hovered === `c:${code}` ? 1.5 : 0.6}
-								vectorEffect="non-scaling-stroke"
-								className={code ? 'cursor-pointer' : undefined}
-								onPointerMove={(event) => code && showTip(event, name, clicks, `c:${code}`)}
-								onPointerLeave={hideTip}
-								onClick={open}
-							/>
-						);
-					})}
+				{contextPaths.map((shape) => (
+					<path key={shape.id} d={shape.d} fill={CONTEXT_FILL} stroke={PAPER} strokeWidth={0.75} pointerEvents="none" />
+				))}
 
-					{hasRegions &&
-						regions?.map((feature) => {
-							const code = regionCodeOf(feature);
-							const clicks = regionClicks.get(code) ?? 0;
-							const open = () => onSelect({ country: selection.country, region: code });
-							return (
-								<path
-									key={feature.properties.id}
-									role="button"
-									tabIndex={clicks > 0 && !selection.region ? 0 : -1}
-									aria-label={`${feature.properties.name}: ${clicksLabel(clicks)}`}
-									onKeyDown={onActivate(open)}
-									d={path(feature) ?? undefined}
-									fill={
-										selection.region ? (code === selection.region ? FOCUS_FILL : '#eceef1') : regionScale.color(clicks)
-									}
-									stroke={hovered === `r:${code}` ? INK : PAPER}
-									strokeWidth={hovered === `r:${code}` ? 1.5 : 0.75}
-									vectorEffect="non-scaling-stroke"
-									className="cursor-pointer"
-									onPointerMove={(event) => showTip(event, feature.properties.name, clicks, `r:${code}`)}
-									onPointerLeave={hideTip}
-									onClick={open}
-								/>
-							);
-						})}
+				{shapes.map((shape) => (
+					<path
+						key={shape.key}
+						d={shape.d}
+						fill={shape.clicks > 0 ? color(shape.clicks) : EMPTY_FILL}
+						fillOpacity={focusing && hovered !== shape.key ? 0.72 : 1}
+						stroke={PAPER}
+						strokeWidth={0.75}
+						role="button"
+						tabIndex={shape.onSelect && shape.clicks > 0 ? 0 : -1}
+						aria-label={`${shape.name}: ${clicksLabel(shape.clicks)}`}
+						className={`outline-none transition-[fill-opacity] duration-150 ${shape.onSelect ? 'cursor-pointer' : ''}`}
+						onPointerMove={(event) => track(event, shape.key)}
+						onPointerLeave={leave}
+						onFocus={() => onHover(shape.key)}
+						onBlur={() => onHover(null)}
+						onClick={shape.onSelect}
+						onKeyDown={shape.onSelect ? onActivate(shape.onSelect) : undefined}
+					/>
+				))}
 
-					{regionLabels.map((label) => (
-						<text
-							key={label.code}
-							x={label.x}
-							y={label.y}
-							textAnchor="middle"
-							dominantBaseline="central"
-							fontSize={11 / zoom.k}
-							fontWeight={600}
-							fill={INK}
-							stroke={PAPER}
-							strokeWidth={3 / zoom.k}
-							paintOrder="stroke"
+				{hoveredShape && (
+					<path
+						d={hoveredShape.d}
+						fill="none"
+						stroke={INK}
+						strokeWidth={1.75}
+						strokeLinejoin="round"
+						pointerEvents="none"
+					/>
+				)}
+
+				{labels.map((label) => (
+					<text
+						key={label.key}
+						x={label.x}
+						y={label.y}
+						textAnchor="middle"
+						dominantBaseline="central"
+						fontSize={11}
+						fontWeight={600}
+						letterSpacing="0.02em"
+						fill={INK}
+						stroke={PAPER}
+						strokeWidth={3}
+						strokeOpacity={0.9}
+						paintOrder="stroke"
+						pointerEvents="none"
+					>
+						{label.text}
+					</text>
+				))}
+
+				{dots.map((dot) => (
+					<g key={dot.key}>
+						<circle
+							cx={dot.x}
+							cy={dot.y}
+							r={dot.r}
+							fill={RAMP[3]}
+							fillOpacity={hovered && hovered !== dot.key ? 0.55 : 0.9}
+							stroke={hovered === dot.key ? INK : '#ffffff'}
+							strokeWidth={hovered === dot.key ? 2 : 1.5}
 							pointerEvents="none"
-						>
-							{label.code} {formatNumber(label.clicks)}
-						</text>
-					))}
-
-					{cities.map((city) => {
-						const radius = (5 + 14 * Math.sqrt(city.clicks / maxCity)) / zoom.k;
-						const id = `p:${city.regionCode}:${city.name}`;
-						return (
-							<g key={id}>
-								<circle
-									cx={city.x}
-									cy={city.y}
-									r={radius}
-									fill={RAMP[4]}
-									fillOpacity={0.85}
-									stroke={PAPER}
-									strokeWidth={hovered === id ? 2.5 : 1.5}
-									vectorEffect="non-scaling-stroke"
-									pointerEvents="none"
-								/>
-								<circle
-									cx={city.x}
-									cy={city.y}
-									r={Math.max(radius, 12 / zoom.k)}
-									fill="transparent"
-									role="img"
-									aria-label={`${city.name || 'Cidade desconhecida'}: ${clicksLabel(city.clicks)}`}
-									onPointerMove={(event) => showTip(event, city.name || 'Cidade desconhecida', city.clicks, id)}
-									onPointerLeave={hideTip}
-								/>
-							</g>
-						);
-					})}
-				</g>
+						/>
+						{dot.showLabel && (
+							<text
+								x={dot.x + dot.r + 5}
+								y={dot.y}
+								dominantBaseline="central"
+								fontSize={12}
+								fontWeight={500}
+								fill={INK}
+								stroke={PAPER}
+								strokeWidth={3}
+								paintOrder="stroke"
+								pointerEvents="none"
+							>
+								{dot.name}
+							</text>
+						)}
+						<circle
+							cx={dot.x}
+							cy={dot.y}
+							r={Math.max(dot.r, 12)}
+							fill="transparent"
+							role="img"
+							aria-label={`${dot.name}: ${clicksLabel(dot.clicks)}`}
+							onPointerMove={(event) => track(event, dot.key)}
+							onPointerLeave={leave}
+						/>
+					</g>
+				))}
 			</svg>
 
-			{tip && (
+			{tip && pointer && (
 				<div
-					className="pointer-events-none absolute z-10 rounded-md border border-rule bg-surface px-2.5 py-1.5 shadow-[0_4px_16px_rgb(0_0_0/0.08)]"
+					className="pointer-events-none absolute z-10 min-w-36 rounded-lg border border-rule bg-surface px-3 py-2 shadow-[0_8px_24px_-8px_rgb(0_0_0/0.2)]"
 					style={{
-						left: tip.x,
-						top: tip.y,
-						transform: `translate(${tip.x > (container.current?.clientWidth ?? 0) / 2 ? 'calc(-100% - 12px)' : '12px'}, -50%)`,
+						left: pointer.x,
+						top: pointer.y,
+						transform: `translate(${pointer.x > width / 2 ? 'calc(-100% - 14px)' : '14px'}, ${
+							pointer.y > height / 2 ? 'calc(-100% - 6px)' : '6px'
+						})`,
 					}}
 				>
-					<p className="text-sm font-semibold tabular-nums">{clicksLabel(tip.clicks)}</p>
-					<p className="text-xs text-mute">{tip.title}</p>
+					<p className="text-base font-semibold tabular-nums">{clicksLabel(tip.clicks)}</p>
+					<p className="text-sm">{tip.name}</p>
+					{total > 0 && tip.clicks > 0 && <p className="text-xs text-mute">{share(tip.clicks, total)}</p>}
 				</div>
 			)}
-
-			{!selection.region && <Legend classes={scale.classes} />}
 		</div>
 	);
 }
 
-function Legend({ classes }: { classes: { from: number; to: number; color: string }[] }) {
+export function MapLegend({ classes }: { classes: { from: number; to: number; color: string }[] }) {
 	if (classes.length === 0) return null;
 	return (
-		<ul className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-mute" aria-label="Legenda">
+		<ul className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-mute" aria-label="Legenda">
 			<li className="flex items-center gap-1.5">
 				<span className="size-2.5 rounded-sm" style={{ background: EMPTY_FILL }} />
 				Nenhum

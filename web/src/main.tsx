@@ -12,11 +12,12 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ApiError, api, type Range } from './api';
 import { AppLayout } from './components/AppLayout';
+import { DashboardPage } from './pages/DashboardPage';
+import { LinkPage } from './pages/LinkPage';
 import { LinksPage } from './pages/LinksPage';
 import { LoginPage } from './pages/LoginPage';
 import { NotFoundPage } from './pages/NotFoundPage';
-import { StatsPage } from './pages/StatsPage';
-import { TokensPage } from './pages/TokensPage';
+import { SettingsPage } from './pages/SettingsPage';
 
 const queryClient = new QueryClient({
 	defaultOptions: {
@@ -56,34 +57,64 @@ const appRoute = createRoute({
 	component: AppLayout,
 });
 
-const linksRoute = createRoute({ getParentRoute: () => appRoute, path: '/', component: LinksPage });
-const tokensRoute = createRoute({ getParentRoute: () => appRoute, path: '/tokens', component: TokensPage });
-
 const RANGES: Range[] = ['7d', '30d', '90d', 'all'];
 const text = (value: unknown, pattern: RegExp) =>
 	typeof value === 'string' && pattern.test(value) ? value : undefined;
 
-interface StatsSearch {
+interface MapSearch {
 	range: Range;
-	slug?: string;
 	country?: string;
 	region?: string;
 }
 
-const statsRoute = createRoute({
+const mapSearch = (search: Record<string, unknown>): MapSearch => ({
+	range: RANGES.includes(search.range as Range) ? (search.range as Range) : '30d',
+	country: text(search.country, /^[A-Z]{2}$/),
+	region: text(search.region, /^[A-Za-z0-9-]{1,10}$/),
+});
+
+const dashboardRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: '/',
+	validateSearch: (search: Record<string, unknown>): MapSearch & { slug?: string } => ({
+		...mapSearch(search),
+		slug: text(search.slug, /^[a-zA-Z0-9_-]{2,32}$/),
+	}),
+	component: DashboardPage,
+});
+
+const linksRoute = createRoute({ getParentRoute: () => appRoute, path: '/links', component: LinksPage });
+
+const linkRoute = createRoute({
+	getParentRoute: () => appRoute,
+	path: '/links/$slug',
+	validateSearch: mapSearch,
+	component: LinkPage,
+});
+
+const settingsRoute = createRoute({ getParentRoute: () => appRoute, path: '/settings', component: SettingsPage });
+
+const statsRedirect = createRoute({
 	getParentRoute: () => appRoute,
 	path: '/stats',
-	validateSearch: (search: Record<string, unknown>): StatsSearch => ({
-		range: RANGES.includes(search.range as Range) ? (search.range as Range) : '30d',
-		slug: text(search.slug, /^[a-zA-Z0-9_-]{2,32}$/),
-		country: text(search.country, /^[A-Z]{2}$/),
-		region: text(search.region, /^[A-Za-z0-9-]{1,10}$/),
-	}),
-	component: StatsPage,
+	beforeLoad: () => {
+		throw redirect({ to: '/', search: { range: '30d' } });
+	},
+});
+
+const tokensRedirect = createRoute({
+	getParentRoute: () => appRoute,
+	path: '/tokens',
+	beforeLoad: () => {
+		throw redirect({ to: '/settings' });
+	},
 });
 
 const router = createRouter({
-	routeTree: rootRoute.addChildren([loginRoute, appRoute.addChildren([linksRoute, statsRoute, tokensRoute])]),
+	routeTree: rootRoute.addChildren([
+		loginRoute,
+		appRoute.addChildren([dashboardRoute, linksRoute, linkRoute, settingsRoute, statsRedirect, tokensRedirect]),
+	]),
 	context: { queryClient },
 	defaultPreload: 'intent',
 	defaultNotFoundComponent: NotFoundPage,

@@ -4,7 +4,7 @@ import { type ApiToken, api } from '../api';
 import { Button, CopyButton, ErrorText, Input } from '../components/ui';
 import { formatDate } from '../format';
 
-export function TokensPage() {
+export function TokensSection() {
 	const queryClient = useQueryClient();
 	const { data: tokens, isPending, error } = useQuery({ queryKey: ['tokens'], queryFn: api.tokens });
 	const [name, setName] = useState('');
@@ -25,11 +25,11 @@ export function TokensPage() {
 	}
 
 	return (
-		<div className="mx-auto grid max-w-3xl gap-12">
+		<div className="grid gap-10">
 			<section aria-labelledby="tokens-title">
-				<h1 id="tokens-title" className="text-2xl font-semibold tracking-tight">
+				<h2 id="tokens-title" className="text-lg font-semibold tracking-tight">
 					Tokens de acesso
-				</h1>
+				</h2>
 				<p className="mt-2 max-w-prose text-mute">
 					Um token deixa um script criar links sem passar pelo login, como o atalho do Mac. Mande no header{' '}
 					<code className="rounded bg-wash px-1.5 py-0.5 text-[0.8125rem] text-ink">Authorization: Bearer</code>.
@@ -65,9 +65,9 @@ export function TokensPage() {
 			</section>
 
 			<section aria-labelledby="active-title" className="grid gap-4">
-				<h2 id="active-title" className="font-medium">
+				<h3 id="active-title" className="font-medium">
 					Ativos
-				</h2>
+				</h3>
 				{isPending && <p className="text-mute">Carregando…</p>}
 				<ErrorText>{error?.message}</ErrorText>
 				{tokens && tokens.length === 0 && <p className="text-mute">Nenhum token ativo.</p>}

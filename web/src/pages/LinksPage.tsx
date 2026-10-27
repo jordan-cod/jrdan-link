@@ -31,7 +31,7 @@ export function LinksPage() {
 			<section aria-labelledby="links-title" className="grid gap-4">
 				<div className="flex items-end justify-between gap-4">
 					<h2 id="links-title" className="font-medium">
-						Seus links
+						Todos
 						{links && <span className="ml-2 font-normal text-mute tabular-nums">{links.length}</span>}
 					</h2>
 					{links && links.length > 0 && (
@@ -103,9 +103,10 @@ function CreateLink() {
 
 	return (
 		<section aria-labelledby="create-title">
-			<h1 id="create-title" className="text-2xl font-semibold tracking-tight">
+			<h1 className="text-2xl font-semibold tracking-tight">Links</h1>
+			<h2 id="create-title" className="mt-8 font-medium">
 				Encurtar um link
-			</h1>
+			</h2>
 
 			<form onSubmit={submit} className="mt-5 grid gap-3">
 				<div className="flex flex-col gap-2 sm:flex-row">
@@ -234,14 +235,14 @@ function LinkRow({ link }: { link: Link }) {
 		<li className="group grid gap-1 py-3.5 sm:grid-cols-[1fr_auto] sm:items-center sm:gap-4">
 			<div className="min-w-0">
 				<div className="flex items-center gap-1">
-					<a
-						href={link.shortUrl}
-						target="_blank"
-						rel="noreferrer"
+					<RouterLink
+						to="/links/$slug"
+						params={{ slug: link.slug }}
+						search={{ range: '30d' }}
 						className="truncate font-medium decoration-rule underline-offset-4 hover:text-accent hover:underline"
 					>
 						{shortLabel(link.shortUrl)}
-					</a>
+					</RouterLink>
 					<CopyButton value={link.shortUrl} />
 				</div>
 				<p className="truncate text-sm text-mute" title={link.url}>
@@ -251,8 +252,9 @@ function LinkRow({ link }: { link: Link }) {
 
 			<div className="flex items-center gap-3 text-sm sm:justify-end">
 				<RouterLink
-					to="/stats"
-					search={{ range: '30d', slug: link.slug }}
+					to="/links/$slug"
+					params={{ slug: link.slug }}
+					search={{ range: '30d' }}
 					className="tabular-nums text-ink decoration-rule underline-offset-4 hover:text-accent hover:underline"
 				>
 					{link.clicks === 1 ? '1 clique' : `${link.clicks.toLocaleString('pt-BR')} cliques`}
