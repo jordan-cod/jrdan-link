@@ -4,6 +4,9 @@ import type { GitHubOAuth } from './auth/github';
 import { randomToken } from './auth/secrets';
 import { SESSION_TTL_MS, type SessionStore } from './auth/sessions';
 import type { ApiToken, TokenStore } from './auth/tokens';
+import type { ClickRepository } from './clicks/repository';
+import { country, filterFor, overview, RANGES, type Range } from './clicks/stats';
+import type { ClickSync } from './clicks/sync';
 import type { Link } from './links/repository';
 import type { LinkResult, LinkService } from './links/service';
 
@@ -15,11 +18,19 @@ export interface AppDeps {
 	sessions: SessionStore;
 	tokens: TokenStore;
 	github: GitHubOAuth;
+	clicks: ClickRepository;
+	sync: ClickSync;
 }
 
 type Principal = { kind: 'session' | 'token'; login: string };
 
 const STATE_TTL_SECONDS = 600;
+
+const statsQuery = t.Object({
+	range: t.Optional(t.Union(Object.keys(RANGES).map((key) => t.Literal(key)))),
+	slug: t.Optional(t.String({ maxLength: 64 })),
+	offset: t.Optional(t.Numeric({ minimum: -840, maximum: 840 })),
+});
 
 const linkBody = t.Object({
 	url: t.String({ maxLength: 4096 }),
@@ -33,8 +44,9 @@ export function createApp(deps: AppDeps) {
 	const publicOrigin = new URL(deps.publicUrl).origin;
 	const webRoot = resolvePath(deps.webDist);
 
-	const presentLink = (link: Link) => ({
+	const presentLink = (link: Link, clicks = 0) => ({
 		slug: link.slug,
+		clicks,
 		url: link.url,
 		shortUrl: deps.links.shortUrl(link.slug),
 		createdAt: link.createdAt.toISOString(),
@@ -72,7 +84,26 @@ export function createApp(deps: AppDeps) {
 			}
 		})
 		.get('/me', ({ principal }) => ({ login: principal?.login }))
-		.get('/links', () => ({ links: deps.links.list().map(presentLink) }))
+		.get('/links', () => {
+			const totals = deps.clicks.totalsBySlug();
+			return { links: deps.links.list().map((link) => presentLink(link, totals.get(link.slug) ?? 0)) };
+		})
+		.get(
+			'/stats',
+			({ query }) => {
+				const filter = filterFor((query.range ?? '30d') as Range, query.slug || null, query.offset ?? 0);
+				return { ...overview(deps.clicks, filter), syncedAt: deps.sync.lastSyncedAt?.toISOString() ?? null };
+			},
+			{ query: statsQuery },
+		)
+		.get(
+			'/stats/countries/:code',
+			({ params, query }) => {
+				const filter = filterFor((query.range ?? '30d') as Range, query.slug || null, query.offset ?? 0);
+				return country(deps.clicks, filter, params.code.toUpperCase());
+			},
+			{ query: statsQuery },
+		)
 		.post('/links', async ({ body, set }) => respond(await deps.links.create(body), set, 201), { body: linkBody })
 		.patch(
 			'/links/:slug',

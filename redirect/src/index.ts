@@ -1,3 +1,4 @@
+import { clickPoint } from './click';
 import type { LinkMetadata, RedirectEnv } from './env';
 
 const BROWSER_TTL_SECONDS = 60;
@@ -11,6 +12,12 @@ function edgeTtl(metadata: LinkMetadata | null, now: number): number {
 	return Math.max(0, Math.min(EDGE_TTL_SECONDS, remaining));
 }
 
+function record(env: RedirectEnv, request: Request, slug: string): void {
+	try {
+		env.CLICKS?.writeDataPoint(clickPoint(request, slug));
+	} catch {}
+}
+
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		const url = new URL(request.url);
@@ -21,10 +28,15 @@ export default {
 		const cacheKey = new Request(`${url.origin}/${slug}`);
 
 		const cached = await cache.match(cacheKey);
-		if (cached) return cached;
+		if (cached) {
+			record(env, request, slug);
+			return cached;
+		}
 
 		const { value: destination, metadata } = await env.LINKS.getWithMetadata<LinkMetadata>(slug, 'text');
 		if (!destination) return notFound();
+
+		record(env, request, slug);
 
 		const ttl = edgeTtl(metadata, Date.now());
 		const response = new Response(null, {

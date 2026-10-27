@@ -6,7 +6,16 @@
 		"useIgnoreFile": true
 	},
 	"files": {
-		"includes": ["redirect/**", "server/**", "web/**", "*.json", "!**/dist", "!**/.wrangler", "!**/node_modules"]
+		"includes": [
+			"redirect/**",
+			"server/**",
+			"web/**",
+			"*.json",
+			"!**/dist",
+			"!**/.wrangler",
+			"!**/node_modules",
+			"!web/public/geo"
+		]
 	},
 	"formatter": {
 		"indentStyle": "tab",

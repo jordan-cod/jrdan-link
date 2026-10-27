@@ -6,4 +6,5 @@ export interface LinkMetadata {
 
 export interface RedirectEnv {
 	LINKS: KVNamespace;
+	CLICKS: AnalyticsEngineDataset;
 }

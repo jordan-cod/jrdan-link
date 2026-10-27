@@ -6,6 +6,10 @@ import { createApp } from './app';
 import type { GitHubOAuth } from './auth/github';
 import { SessionStore } from './auth/sessions';
 import { TokenStore } from './auth/tokens';
+import type { Click } from './clicks/click';
+import { MemoryClickSource } from './clicks/memory';
+import { ClickRepository } from './clicks/repository';
+import { ClickSync } from './clicks/sync';
 import { openDatabase } from './db/database';
 import { MemoryEdge } from './edge/memory';
 import { LinkRepository } from './links/repository';
@@ -23,6 +27,9 @@ function setup(login: string | null = 'jordan-cod') {
 	const edge = new MemoryEdge();
 	const sessions = new SessionStore(db);
 	const tokens = new TokenStore(db);
+	const source = new MemoryClickSource();
+	const clicks = new ClickRepository(db);
+	const sync = new ClickSync(source, clicks);
 	const github: GitHubOAuth = {
 		authorizeUrl: (state) => `https://github.test/authorize?state=${state}`,
 		login: async () => login,
@@ -35,6 +42,8 @@ function setup(login: string | null = 'jordan-cod') {
 		sessions,
 		tokens,
 		github,
+		clicks,
+		sync,
 	});
 	const secret = tokens.create('tests').secret;
 	const session = sessions.create('jordan-cod').token;
@@ -54,7 +63,7 @@ function setup(login: string | null = 'jordan-cod') {
 	const withToken = { authorization: `Bearer ${secret}` };
 	const withSession = { cookie: `session=${session}`, origin: PUBLIC_URL };
 
-	return { app, db, edge, tokens, call, withToken, withSession };
+	return { app, db, edge, tokens, source, clicks, sync, call, withToken, withSession };
 }
 
 let ctx: ReturnType<typeof setup>;
@@ -263,5 +272,111 @@ describe('panel', () => {
 	test('answers unknown api routes with json', async () => {
 		const response = await ctx.call('/api/nope', { headers: ctx.withToken });
 		expect(response.status).toBe(404);
+	});
+});
+
+let clickId = 0;
+const click = (overrides: Partial<Click> = {}): Click => ({
+	id: `c${++clickId}`,
+	slug: 'cv',
+	at: new Date(),
+	country: 'BR',
+	regionCode: 'MG',
+	region: 'Minas Gerais',
+	city: 'Belo Horizonte',
+	latitude: -19.92,
+	longitude: -43.94,
+	referrer: 'linkedin.com',
+	device: 'mobile',
+	weight: 1,
+	...overrides,
+});
+
+describe('clicks', () => {
+	test('pulls clicks once, even when windows overlap', async () => {
+		ctx.source.clicks.push(click(), click());
+		await ctx.sync.run();
+		await ctx.sync.run();
+		const stats = (await (await ctx.call('/api/stats', { headers: ctx.withToken })).json()) as {
+			total: number;
+			syncedAt: string | null;
+		};
+		expect(stats.total).toBe(2);
+		expect(stats.syncedAt).not.toBeNull();
+	});
+
+	test('leaves bots out of every count', async () => {
+		ctx.source.clicks.push(click(), click({ device: 'bot', referrer: 'whatsapp' }));
+		await ctx.sync.run();
+		const stats = (await (await ctx.call('/api/stats', { headers: ctx.withToken })).json()) as {
+			total: number;
+			bots: number;
+			referrers: { host: string }[];
+		};
+		expect(stats.total).toBe(1);
+		expect(stats.bots).toBe(1);
+		expect(stats.referrers.map((r) => r.host)).toEqual(['linkedin.com']);
+	});
+
+	test('groups by country and fills empty days', async () => {
+		ctx.source.clicks.push(
+			click(),
+			click(),
+			click({ country: 'US', regionCode: 'TX', region: 'Texas', city: 'Austin' }),
+		);
+		await ctx.sync.run();
+		const stats = (await (await ctx.call('/api/stats?range=7d', { headers: ctx.withToken })).json()) as {
+			countries: { code: string; clicks: number }[];
+			series: { clicks: number }[];
+		};
+		expect(stats.countries).toEqual([
+			{ code: 'BR', clicks: 2 },
+			{ code: 'US', clicks: 1 },
+		]);
+		expect(stats.series).toHaveLength(7);
+		expect(stats.series.reduce((sum, day) => sum + day.clicks, 0)).toBe(3);
+	});
+
+	test('narrows by link and by period', async () => {
+		const old = new Date(Date.now() - 40 * 24 * 60 * 60 * 1000);
+		ctx.source.clicks.push(click(), click({ slug: 'pullo' }), click({ at: old }));
+		await ctx.sync.run();
+		const bySlug = (await (await ctx.call('/api/stats?range=all&slug=pullo', { headers: ctx.withToken })).json()) as {
+			total: number;
+		};
+		const recent = (await (await ctx.call('/api/stats?range=30d', { headers: ctx.withToken })).json()) as {
+			total: number;
+		};
+		expect(bySlug.total).toBe(1);
+		expect(recent.total).toBe(2);
+	});
+
+	test('breaks a country down into regions and cities', async () => {
+		ctx.source.clicks.push(
+			click(),
+			click({ city: 'Contagem' }),
+			click({ regionCode: 'SP', region: 'São Paulo', city: 'São Paulo' }),
+		);
+		await ctx.sync.run();
+		const detail = (await (await ctx.call('/api/stats/countries/br', { headers: ctx.withToken })).json()) as {
+			regions: { code: string; clicks: number }[];
+			cities: { name: string; regionCode: string }[];
+		};
+		expect(detail.regions[0]).toMatchObject({ code: 'MG', clicks: 2 });
+		expect(detail.cities.filter((city) => city.regionCode === 'MG')).toHaveLength(2);
+	});
+
+	test('shows the click total on each link', async () => {
+		await ctx.call('/api/links', {
+			method: 'POST',
+			headers: ctx.withToken,
+			json: { url: 'https://a.com', slug: 'cv' },
+		});
+		ctx.source.clicks.push(click(), click());
+		await ctx.sync.run();
+		const list = (await (await ctx.call('/api/links', { headers: ctx.withToken })).json()) as {
+			links: { slug: string; clicks: number }[];
+		};
+		expect(list.links[0]).toMatchObject({ slug: 'cv', clicks: 2 });
 	});
 });

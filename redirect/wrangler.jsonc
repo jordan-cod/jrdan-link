@@ -2,6 +2,7 @@
 	"name": "jrdan-link-redirect",
 	"main": "src/index.ts",
 	"compatibility_date": "2026-10-01",
+	"analytics_engine_datasets": [{ "binding": "CLICKS", "dataset": "jrdan_link_clicks" }],
 	"kv_namespaces": [{ "binding": "LINKS", "id": "9d149b17fa2346cd8763d3352209ba65" }],
 	"routes": [{ "pattern": "jrdan.link", "custom_domain": true }]
 }

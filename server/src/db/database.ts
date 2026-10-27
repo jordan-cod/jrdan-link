@@ -26,6 +26,27 @@ const MIGRATIONS = [
 		created_at TEXT NOT NULL,
 		last_used_at TEXT
 	);`,
+	`CREATE TABLE clicks (
+		id TEXT PRIMARY KEY,
+		slug TEXT NOT NULL,
+		at TEXT NOT NULL,
+		country TEXT NOT NULL,
+		region_code TEXT NOT NULL,
+		region TEXT NOT NULL,
+		city TEXT NOT NULL,
+		latitude REAL,
+		longitude REAL,
+		referrer TEXT NOT NULL,
+		device TEXT NOT NULL,
+		weight INTEGER NOT NULL DEFAULT 1
+	);
+	CREATE INDEX clicks_at ON clicks (at);
+	CREATE INDEX clicks_slug_at ON clicks (slug, at);
+
+	CREATE TABLE sync_state (
+		name TEXT PRIMARY KEY,
+		value TEXT NOT NULL
+	);`,
 ];
 
 export function openDatabase(path: string): Database {

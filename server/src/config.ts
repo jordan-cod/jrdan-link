@@ -14,6 +14,7 @@ export interface Config {
 		accountId: string;
 		namespaceId: string;
 		zoneId: string;
+		clicksDataset: string;
 	};
 }
 
@@ -42,6 +43,7 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
 			accountId: required(env, 'CLOUDFLARE_ACCOUNT_ID'),
 			namespaceId: required(env, 'CLOUDFLARE_KV_NAMESPACE_ID'),
 			zoneId: required(env, 'CLOUDFLARE_ZONE_ID'),
+			clicksDataset: env.CLICKS_DATASET ?? 'jrdan_link_clicks',
 		},
 	};
 }
