@@ -1,0 +1,23 @@
+{
+  "name": "jrdan-link",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "sst dev",
+    "deploy": "sst deploy --stage production",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.infra.json",
+    "check": "biome check --write .",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "sst": "^4.17.1"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.4",
+    "@cloudflare/workers-types": "^4.20250109.0",
+    "@types/bun": "^1.4.0",
+    "@types/node": "^26.4.1",
+    "typescript": "^5.9.0"
+  },
+  "trustedDependencies": ["@biomejs/biome"]
+}
